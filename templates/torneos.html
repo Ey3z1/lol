@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Torneos</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Torneos disponibles</h1>
+        <ul>
+            {% for torneo in torneos %}
+                <li onclick="window.location.href='/torneo/{{ torneo.id }}'" style="cursor:pointer;">
+                    {{ torneo.name }} (ID: {{ torneo.id }})
+                    <!-- Puedes agregar más info o enlaces aquí -->
+                </li>
+            {% else %}
+                <li>No hay torneos disponibles.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</body>
+</html>

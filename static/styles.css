@@ -1,0 +1,324 @@
+/* Estilos Generales */
+body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background-color: #0F1721;
+    color: #E0E3E7;
+    margin: 0;
+    padding: 20px;
+    line-height: 1.6;
+}
+
+.container {
+    background: #1A232E;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    margin: 20px auto;
+    max-width: 1200px;
+    border: 1px solid #2A3646;
+}
+
+h1, h2, h3 {
+    color: #4E9CD6;
+    margin: 1.5rem 0;
+}
+
+h1 {
+    font-size: 2.2rem;
+    border-bottom: 2px solid #2A3646;
+    padding-bottom: 0.5rem;
+}
+
+/* Lista de Matches */
+ul {
+    list-style: none;
+    padding: 0;
+}
+
+li {
+    background: #1E2A3A;
+    margin-bottom: 15px;
+    padding: 1.25rem;
+    border-radius: 8px;
+    border: 1px solid #2A3646;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+li:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+    background: #233143;
+}
+
+/* Enlaces y Botones */
+a {
+    color: #5EB0EF;
+    text-decoration: none;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+a:hover {
+    color: #7BC8FF;
+    text-decoration: underline;
+}
+
+/* Imágenes de Equipos */
+img[alt*="team"] {
+    filter: grayscale(0.2) brightness(0.9);
+    transition: filter 0.3s;
+}
+
+li:hover img[alt*="team"] {
+    filter: grayscale(0) brightness(1.1);
+}
+
+/* Contenedor de Games */
+.games-list {
+    background: #16202D;
+    border-left: 4px solid #3A7BB3;
+    margin: 15px 0 0 30px;
+    padding: 1rem;
+    border-radius: 6px;
+    display: none;
+}
+
+/* Tarjetas de Juego */
+.game-card {
+    background: #1E2A3A;
+    border: 1px solid #2A3646;
+    border-radius: 8px;
+    margin: 1rem 0;
+    overflow: hidden;
+}
+
+.game-header {
+    background: #2A3646;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Equipos y Jugadores */
+.teams-container {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 2rem;
+    padding: 1.5rem;
+}
+
+.team {
+    background: #16202D;
+    border: 1px solid #2A3646;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.blue-team {
+    border-color: #3A7BB3;
+}
+
+.red-team {
+    border-color: #B33A3A;
+}
+
+.player {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    margin: 0.5rem 0;
+    background: #1A232E;
+    border-radius: 6px;
+}
+
+.champion-img {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid #3A7BB3;
+    margin-right: 1rem;
+}
+
+.stats {
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.9em;
+}
+
+.kda { color: #FFD700; }
+.cs { color: #E2B93B; }
+.gold { color: #C5B358; }
+
+/* Elementos Interactivos */
+.vs {
+    background: #2A3646;
+    color: #FFD700;
+    padding: 0.5rem 1.5rem;
+    border-radius: 20px;
+    align-self: center;
+    font-weight: bold;
+    border: 2px solid #4E9CD6;
+}
+
+/* Efectos de Hover */
+li:hover {
+    cursor: pointer;
+}
+
+.player:hover {
+    background: #233143;
+    transform: translateX(5px);
+}
+
+.match-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.team-img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1.5px solid #2A3646;
+    background: #1A232E;
+    object-fit: cover;
+}
+
+.team-name {
+    font-weight: bold;
+    font-size: 1.1em;
+    margin: 0 4px;
+}
+
+.blue-team {
+    color: #4E9CD6;
+}
+
+.red-team {
+    color: #E05A5A;
+}
+
+.score-badge {
+    display: inline-block;
+    min-width: 28px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 1em;
+    font-weight: bold;
+    text-align: center;
+    margin: 0 2px;
+}
+
+.blue-badge {
+    background: #1A232E;
+    color: #4E9CD6;
+    border: 1.5px solid #4E9CD6;
+}
+
+.red-badge {
+    background: #1A232E;
+    color: #E05A5A;
+    border: 1.5px solid #E05A5A;
+}
+
+.vs-label {
+    color: #FFD700;
+    font-weight: bold;
+    margin: 0 8px;
+    font-size: 1.1em;
+}
+
+.match-description {
+    text-align: center;
+    color: #E0E3E7;
+    font-size: 0.95em;
+    margin-top: 2px;
+    opacity: 0.8;
+}
+
+/* Transiciones */
+* {
+    transition: background-color 0.3s, transform 0.3s, border-color 0.3s;
+}
+
+.listado-matches {
+    text-align: center !important;
+}
+
+.team-blue {
+    border: 2px solid #0d6efd;
+    background: #183153 !important;
+}
+.team-red {
+    border: 2px solid #dc3545;
+    background: #58151c !important;
+}
+.player-card { transition: transform 0.2s; }
+.player-card:hover { transform: translateY(-3px);}
+.team-option img {
+    width: 28px;
+    height: 28px;
+    margin-right: 10px;
+    border-radius: 50%;
+    vertical-align: middle;
+}
+.select2-container--default .select2-selection--single {
+    background-color: #333;
+    border: 2px solid #555;
+    min-height: 48px;
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+.select2-container--default .select2-selection__rendered {
+    color: #fff !important;
+    line-height: 48px !important;
+}
+.select2-results__option {
+    color: #fff !important;
+    font-size: 1.05rem;
+}
+.select2-results__option--highlighted {
+    background-color: #444 !important;
+    color: #fff !important;
+}
+
+.linea-input {
+    border: 2px solid #444;
+    border-radius: 8px;
+    font-weight: bold;
+}
+.linea-input:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+.btn-outline-danger, .btn-outline-success {
+    width: 40px;
+    height: 40px;
+    border-width: 2px;
+}
+
+.probability-bar { height: 20px; border-radius: 10px; }
+.supero-linea { background-color: #d4edda !important; }
+.no-supero { background-color: #f8d7da !important; }
+.ev-positivo { color: #28a745; font-weight: bold; }
+.ev-negativo { color: #dc3545; font-weight: bold; }
+
+
+/* Ajustes Responsivos */
+@media (max-width: 768px) {
+    .teams-container {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .vs {
+        margin: 1rem 0;
+        width: fit-content;
+    }
+}

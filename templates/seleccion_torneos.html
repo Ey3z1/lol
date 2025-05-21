@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Descargar Games</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <!-- templates/seleccion_torneos.html -->
+<form method="POST">
+    <div class="card">
+      <div class="card-header">
+        <h4>Selecciona los torneos a descargar</h4>
+        {% if mensaje %}
+          <div class="alert alert-info">{{ mensaje }}</div>
+        {% endif %}
+      </div>
+      
+      <div class="card-body">
+        <div class="row">
+          {% for torneo in torneos %}
+            <div class="col-md-6 mb-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" 
+                     name="tournamentes" 
+                     value="{{ torneo.id }}" 
+                     id="torneo_{{ torneo.id }}">
+                <label class="form-check-label" for="torneo_{{ torneo.id }}">
+                  {{ torneo.name }}
+                </label>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      
+      <div class="card-footer">
+        <button type="submit" class="btn btn-primary">
+          Descargar torneos seleccionados
+        </button>
+      </div>
+    </div>
+  </form>
+</body>
+</html>

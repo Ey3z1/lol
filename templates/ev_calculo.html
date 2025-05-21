@@ -1,0 +1,167 @@
+<!-- templates/ev_calculo.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>📊 {{team1_name}} VS {{team2_name}} 📊</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/all.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div >
+        <h2 class="text-center mb-4">📊 {{team1_name}} VS {{team2_name}} 📊</h2>
+        <!-- Sección de equipos -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card bg-dark text-white">
+                    <div class="card-body text-center">
+                        <img src="{{ team1_img }}" 
+                            alt="{{ team1_name }}" 
+                            class="img-fluid mb-3"
+                            style="max-height: 150px;">
+                        <h3>{{ team1_name }}</h3>
+                        <h1 class="display-4">{{ prob_team1 }}%</h1>
+                        <h5>Probabilidad de victoria</h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card bg-dark text-white">
+                    <div class="card-body text-center">
+                        <img src="{{ team2_img }}" 
+                            alt="{{ team2_name }}" 
+                            class="img-fluid mb-3"
+                            style="max-height: 150px;">
+                        <h3>{{ team2_name }}</h3>
+                        <h1 class="display-4">{{ prob_team2 }}%</h1>
+                        <h5>Probabilidad de victoria</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% for jugador in jugadores %}
+        <div class="card mb-4 shadow">
+            <div class="card-header bg-secondary text-white">
+                <h4>{{ jugador.nickname }}</h4>
+                <h5>Línea: {{ jugador.linea }} | Cuota over: {{ jugador.cuota_over }} | Cuota under: {{ jugador.cuota_under }}</h5>
+            </div>
+            
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="alert {{ 'alert-success' if jugador.ev_over > 0.05 else 'alert-danger' }}">
+                            <h5>Over {{ jugador.linea }}</h5>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6>Cuota: {{ jugador.cuota_over }}</h6>
+                                    <h6>Probabilidad over contra {{team2_name if jugador.team_id==team1_id else team1_name}}: {{ jugador.prob_over }}%</h6>
+                                    <h6>Partidas over {{ jugador.linea }}: {{jugador.prob_superar_total }}%</h6>
+                                </div>
+                                <div>
+                                    <h4 class="{{ 'ev-positivo' if jugador.ev_over > 0.05 else 'ev-negativo' }}">
+                                        EV: {{ jugador.ev_over }}
+                                    </h4>
+                                    <h5>{{ '✅ BET' if jugador.ev_over > 0.05 else '❌ NO BET' }}</h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="alert {{ 'alert-success' if jugador.ev_under > 0.05 else 'alert-danger' }}">
+                            <h5>Under {{ jugador.linea }}</h5>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6>Cuota: {{ jugador.cuota_under }}</h6>
+                                    <h6>Probabilidad under contra {{team2_name if jugador.team_id==team1_id else team1_name}}: {{ jugador.prob_under }}%</h6>
+                                    <h6>Partidas under {{ jugador.linea }}: {{100 - jugador.prob_superar_total }}%</h6>
+                                </div>
+                                <div>
+                                    <h4 class="{{ 'ev-positivo' if jugador.ev_under > 0.05 else 'ev-negativo' }}">
+                                        EV: {{ jugador.ev_under }}
+                                    </h4>
+                                    <h5>{{ '✅ BET' if jugador.ev_under > 0.05 else '❌ NO BET' }}</h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card bg-success text-white">
+                                <div class="card-body">
+                                    <h5>En Victorias</h5>
+                                    <p>{{ jugador.supero_victorias }}/{{ jugador.total_victorias }}</p>
+                                    <h2>{{ jugador.prob_superar_victorias }}%</h2>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="card bg-danger text-white">
+                                <div class="card-body">
+                                    <h5>En Derrotas</h5>
+                                    <p>{{ jugador.supero_derrotas }}/{{ jugador.total_derrotas }}</p>
+                                    <h2>{{ jugador.prob_superar_derrotas }}%</h2>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body">
+                                    <h5>Total General</h5>
+                                    <p>{{ jugador.supero_victorias + jugador.supero_derrotas }}/{{ jugador.total_victorias + jugador.total_derrotas }}</p>
+                                    <h2>{{ jugador.prob_superar_total }}%</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </div>    
+                </div>
+
+                <h5 class="mb-3">Historial Completo</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Partido</th>
+                                <th>Campeón</th>
+                                <th>Kills</th>
+                                <th>Resultado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for partida in jugador.partidas %}
+                            <tr class="{% if partida.resultado %}table-success{% else %}table-danger{% endif %}">
+                                <td>{{ partida.fecha.strftime('%d/%m/%Y') }}</td>
+                                <td>{{ partida.equipo_jugador }} vs {{ partida.equipo_oponente }} - Game {{ partida.game_num }}</td>
+                                <td>
+                                    <img src="{{ partida.champion_img }}" 
+                                        alt="{{ partida.champion_name }}" 
+                                        class="img-thumbnail"
+                                        style="width: 50px; height: 50px;">
+                                    <small class="d-block">{{ partida.champion_name }}</small>
+                                </td>
+                                <td>{{ partida.kills }}</td>
+                                <td>
+                                    {% if partida.kills > jugador.linea %}
+                                          <span class="badge bg-info"><span class="fa-solid fa-arrow-up"></span>up</span>
+                                    {% else %}
+                                        <span class="badge bg-warning">und</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Descargar Games</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script>
+    function cargarGames(matchId) {
+        // Si ya está abierto, cerrar el menú
+         // Usa el atributo data para evitar problemas de precisión
+        const matchIdStr = matchId;
+        const gamesDiv = document.getElementById(`games-${matchIdStr}`);
+        
+        if (!gamesDiv) {
+            console.error(`Elemento 'games-${matchIdStr}' no encontrado`);
+            return;
+        }
+        if (gamesDiv.style.display === 'block') {
+            gamesDiv.style.display = 'none';
+            gamesDiv.innerHTML = '';
+            return;
+        }
+        document.querySelectorAll('.games-list').forEach(function(div) {
+        div.style.display = 'none';
+        div.innerHTML = '';
+    });
+    
+    fetch(`/games_por_match/${matchId}`)
+    .then(response => response.json())
+    .then(games => {
+        let html = '<div class="games-container">';
+        
+        games.forEach(game => {
+            const resultado = game.resultado_blue === '1' ? 
+                `${game.team_blue} Victory` : 
+                game.resultado_red === '1' ? 
+                `${game.team_red} Victory` : 
+                'Pending';
+            
+            html += `
+                <div class="game-card">
+                    <div class="game-header">
+                        <h3>Game ${game.game_num} - ${resultado}</h3>
+                    </div>
+                    <div class="teams-container">
+                        <div class="team blue">
+                            <h4>${game.team_blue}</h4>
+                            <div class="players">${game.blue_players}</div>
+                        </div>
+                        <div class="vs">VS</div>
+                        <div class="team red">
+                            <h4>${game.team_red}</h4>
+                            <div class="players">${game.red_players}</div>
+                        </div>
+                    </div>
+                </div>`;
+        });
+        
+        html += '</div>';
+        gamesDiv.innerHTML = html;
+        gamesDiv.style.display = 'block';
+    });
+    }
+
+    function renderTeamPlayers(players, side) {
+    let html = '';
+    
+    players.forEach(player => {
+        html += `
+        <div class="player-row ${side}">
+            <div class="champion-container">
+                <img src="${player.champion_img}" class="champion-img" title="${player.champion_name}">
+            </div>
+            <div class="stats-container">
+                <span class="kda">${player.kills}/${player.deaths}/${player.assists}</span>
+                <span class="cs">${player.creep_score}</span>
+                <span class="gold">${player.total_gold}</span>
+            </div>
+        </div>
+        `;
+    });
+    
+    return html;
+}
+    </script>
+</head>
+<body>
+    <div class="container listado-matches">
+        <h2>Torneo: {{ torneo.nombre }}</h2>
+
+        <h3>Matches</h3>
+        <ul  class="listado-matches">
+  {% for match in matches %}
+  <li>
+  <a href="javascript:void(0);" onclick="cargarGames('{{ match.id|string }}')" data-match-id='{{ match.id|string }}'> <!-- Opcional: atributo data -->
+
+      <div class="match-header">
+        {% if match.team1_image.startswith('http') %}
+          <img src="{{ match.team1_image }}" alt="{{ match.team1_name }}" class="team-img">
+        {% else %}
+          <img src="{{ url_for('static', filename=match.team1_image) }}" alt="{{ match.team1_name }}" class="team-img">
+        {% endif %}
+        <span class="team-name blue-team">{{ match.team1_name }}</span>
+        <span class="score-badge blue-badge">{{ match.team1_result }}</span>
+        <span class="vs-label">VS</span>
+        <span class="score-badge red-badge">{{ match.team2_result }}</span>
+        <span class="team-name red-team">{{ match.team2_name }}</span>
+        {% if match.team2_image.startswith('http') %}
+          <img src="{{ match.team2_image }}" alt="{{ match.team2_name }}" class="team-img">
+        {% else %}
+          <img src="{{ url_for('static', filename=match.team2_image) }}" alt="{{ match.team2_name }}" class="team-img">
+        {% endif %}
+      </div>
+    </a>
+    <div id="games-{{ match.id }}" class="games-list"></div>
+  </li>
+  {% endfor %}
+</ul>
+    </div>
+</body>
+</html>
