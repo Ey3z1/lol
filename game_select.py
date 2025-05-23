@@ -227,45 +227,45 @@ def obtener_jugadores_por_equipos(team1_id, team2_id):
         cursor.close()
         connection.close()
 
-def obtener_jugadores_con_estadisticas(team1_id, team2_id):
-    connection = mysql.connector.connect(**DB_CONFIG)
-    cursor = connection.cursor(dictionary=True)
+# def obtener_jugadores_con_estadisticas(team1_id, team2_id):
+#     connection = mysql.connector.connect(**DB_CONFIG)
+#     cursor = connection.cursor(dictionary=True)
     
-    try:
-        cursor.execute("""
-            SELECT 
-                p.player_id,
-                sp.name AS nickname,
-                p.role,
-                t.name AS team_name,
-                AVG(p.kills) AS avg_kills,
-                JSON_ARRAYAGG(
-                    JSON_OBJECT(
-                        'fecha', m.start_time,
-                        'kills', p.kills,
-                        'resultado', m.team1_result
-                    )
-                ) AS partidas
-            FROM participant p
-            JOIN sports_player sp ON p.player_id = sp.id
-            JOIN team t ON p.team_id = t.id
-            JOIN `match` m ON p.match_id = m.id
-            WHERE t.id IN (%s, %s)
-            GROUP BY p.player_id
-        """, (team1_id, team2_id))
+#     try:
+#         cursor.execute("""
+#             SELECT 
+#                 p.player_id,
+#                 sp.name AS nickname,
+#                 p.role,
+#                 t.name AS team_name,
+#                 AVG(p.kills) AS avg_kills,
+#                 JSON_ARRAYAGG(
+#                     JSON_OBJECT(
+#                         'fecha', m.start_time,
+#                         'kills', p.kills,
+#                         'resultado', m.team1_result
+#                     )
+#                 ) AS partidas
+#             FROM participant p
+#             JOIN sports_player sp ON p.player_id = sp.id
+#             JOIN team t ON p.team_id = t.id
+#             JOIN `match` m ON p.match_id = m.id
+#             WHERE t.id IN (%s, %s)
+#             GROUP BY p.player_id
+#         """, (team1_id, team2_id))
         
-        jugadores = cursor.fetchall()
+#         jugadores = cursor.fetchall()
         
-        # Parsear JSON de partidas
-        for jugador in jugadores:
-            jugador['partidas'] = json.loads(jugador['partidas'])
-            jugador['linea'] = obtener_linea_actual(jugador['player_id'])  # Función que debes implementar
+#         # Parsear JSON de partidas
+#         for jugador in jugadores:
+#             jugador['partidas'] = json.loads(jugador['partidas'])
+#             jugador['linea'] = obtener_linea_actual(jugador['player_id'])  # Función que debes implementar
             
-        return jugadores
+#         return jugadores
         
-    finally:
-        cursor.close()
-        connection.close()
+#     finally:
+#         cursor.close()
+#         connection.close()
 
 def obtener_jugador_por_id(jugador_id):
     connection = mysql.connector.connect(**DB_CONFIG)

@@ -11,8 +11,8 @@ DB_CONFIG = {
     "database": "league"
 }
 
-def get_or_create_player(cursor, player_name, participant_id):
-    cursor.execute("SELECT id FROM SPORTS_PLAYER WHERE name like %s", ('%' + player_name + '%',))
+def get_or_create_player(cursor, player_name, participant_id, team_id):
+    cursor.execute("SELECT id FROM SPORTS_PLAYER WHERE name like %s  and team_id = %s ", ('%' + player_name, team_id,))
     player = cursor.fetchone()
     
     if player:
@@ -33,13 +33,18 @@ def get_or_create_player(cursor, player_name, participant_id):
         role = None  # O puedes manejar el error según tu lógica
 
     # Insertar el jugador con el rol directamente
+    code = get_team_code_by_id(cursor, team_id)
+    if code in player_name:
+        name = player_name
+    else:
+        name = code + ' ' + player_name
     cursor.execute(
-        "INSERT INTO SPORTS_PLAYER (name, role) VALUES (%s, %s)",
-        (player_name, role)
+        "INSERT INTO SPORTS_PLAYER (name, role, team_id) VALUES (%s, %s, %s)",
+        (name, role, team_id)
     )
     return cursor.lastrowid
 
-def insert_game(cursor, game_id, match_id, start_time, game_num, duration, patch):
+def insert_game(cursor, game_id, match_id, start_time, game_num, duration, patch, leaguepedia_slug, index_leaguepedia):
     from datetime import datetime
 
     # Si start_time es string, conviértelo a datetime
@@ -55,16 +60,18 @@ def insert_game(cursor, game_id, match_id, start_time, game_num, duration, patch
 
     cursor.execute(
         """
-        INSERT INTO GAME (id, match_id, start_time, game_num, duration, patch) 
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO GAME (id, match_id, start_time, game_num, duration, patch, leaguepedia_slug, index_leaguepedia) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE 
             match_id = VALUES(match_id), 
             start_time = VALUES(start_time),
             game_num = VALUES(game_num),
             duration = VALUES(duration),
-            patch = VALUES(patch)
+            patch = VALUES(patch),
+            leaguepedia_slug = VALUES(leaguepedia_slug),
+            index_leaguepedia = VALUES(index_leaguepedia)
         """,
-        (game_id, match_id, mysql_datetime, game_num, duration, patch)
+        (game_id, match_id, mysql_datetime, game_num, duration, patch, leaguepedia_slug, index_leaguepedia)
     )
 
 def insert_game_stats(cursor, game_id, team_id, side, stats, resultado):
@@ -75,7 +82,7 @@ def insert_game_stats(cursor, game_id, team_id, side, stats, resultado):
         """,
         (
             game_id, team_id, side, stats["totalGold"], stats["inhibitors"],
-            stats["towers"], stats["barons"], stats["totalKills"], len(stats["dragons"]),1 if resultado == side else (None if resultado is None else 0)
+            stats["towers"], stats["barons"], stats["totalKills"], len(stats["dragons"]),1 if resultado == side else (0 if resultado is None else 0)
 
         )
     )
@@ -125,12 +132,26 @@ def get_team_id_by_code(cursor, team_code):
     # Si fetchone() devuelve una tupla:
     return result[0]
 
+def get_team_code_by_id(cursor, team_id):
+    """Obtiene el código del equipo usando el team_id"""
+    cursor.execute(
+        "SELECT code FROM team WHERE id = %s",
+        (team_id,)
+    )
+    result = cursor.fetchone()
+    if result is None:
+        return None
+    # Si fetchone() devuelve un diccionario:
+    if isinstance(result, dict):
+        return result.get("code")
+    # Si fetchone() devuelve una tupla:
+    return result[0]
 
 def get_champion_id(cursor, champion_code):
     """Obtiene el ID del campeón (lo crea si no existe), eliminando espacios y comillas simples"""
     try:
         # Limpiar el código: eliminar todos los espacios y comillas simples
-        clean_code = champion_code.replace(' ', '').replace("'", "")
+        clean_code = champion_code.replace(' ', '').replace("'", "").replace("Wukong", "MonkeyKing").replace("Renata Glasc", "Renata")
         
         # Intentar insertar el campeón (IGNORE evita errores si ya existe)
         cursor.execute(
@@ -205,7 +226,7 @@ def get_or_create_team(team_code, team_name, team_image, connection):
     return team_id
 
 def get_or_create_match(match_id, tournament_id, strategy_type, strategy_count, team1_result, team2_result,
-                        team1_id, team2_id, league_id, block_name, start_time, connection):
+                        team1_id, team2_id, block_name, start_time, connection):
     cur = connection.cursor()
     cur.execute("SELECT id FROM `MATCH` WHERE id = %s", (match_id,))
     row = cur.fetchone()
@@ -215,10 +236,10 @@ def get_or_create_match(match_id, tournament_id, strategy_type, strategy_count, 
     cur.execute("""
         INSERT INTO `MATCH`
         (id, tournamentId, strategy_type, strategy_count, team1_result, team2_result, team1_id, team2_id,
-         league_id, block_name, start_time)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+         block_name, start_time)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     """, (match_id, tournament_id, strategy_type, strategy_count, team1_result, team2_result,
-          team1_id, team2_id, league_id, block_name, start_time))
+          team1_id, team2_id, block_name, start_time))
     connection.commit()
     cur.close()
     return match_id
@@ -371,7 +392,7 @@ def generar_match_id(torneo_id, team1, team2, fecha):
     # Truncamiento seguro a 15 dígitos
     return int(hash_sha256[:15], 16)
 
-def crear_o_actualizar_match(connection, torneo_id, team_blue_id, team_red_id, game_details):
+def crear_match(connection, torneo_id, team_blue_id, team_red_id, game_details):
     cursor = connection.cursor()
     try:
         winner_team_id = team_blue_id if game_details.winner == 'BLUE' else team_red_id

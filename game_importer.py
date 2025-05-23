@@ -101,8 +101,6 @@ def importar_diferencial(connection, torneos_seleccionados):
      # Mapeo de IDs de torneos Lolesports a nombres de torneos en Leaguepedia
     mapeo_torneos = {
         '113503620829714518': [
-            'LPL/2025 Season/Split 2 Placements',
-            'LPL/2025 Season/Split 2',
             'LPL/2025 Season/Split 2 Playoffs'
         ],
         '113481048385904309': [
@@ -171,7 +169,6 @@ def importar_diferencial(connection, torneos_seleccionados):
                     team2_result=team2.get("result", {}).get("gameWins"),
                     team1_id=team1_id,
                     team2_id=team2_id,
-                    league_id=get_league_id(event.get("league", {}).get("name"), connection),
                     block_name=event.get("blockName"),
                     start_time=parse_iso_time(event.get("startTime")),
                     connection=connection
@@ -266,7 +263,7 @@ def importar_diferencial(connection, torneos_seleccionados):
                 match_id = get_or_create_match(
                     match_id, torneo_id, strategy_type, strategy_count,
                     team1_result, team2_result, team1_id, team2_id,
-                    league_id, block_name, start_time, connection
+                    block_name, start_time, connection
                 )
                 
                 print(f"Match {match_id} procesado para torneo {torneo_id}.")
@@ -310,6 +307,7 @@ def importar_diferencial(connection, torneos_seleccionados):
                         red_team_metadata = game_stats.get("gameMetadata", {}).get("redTeamMetadata", {})
                         red_team_stats = last_frame.get("redTeam")
                         red_participants = red_team_metadata.get("participantMetadata", []) if red_team_metadata else []
+                        patch = game_stats.get("patchVersion")
                         red_team_id = None
                         if red_participants:
                             red_team_code = get_team_code_from_participant(red_participants[0])
@@ -320,7 +318,7 @@ def importar_diferencial(connection, torneos_seleccionados):
                     
                         # Insertar el juego
                         try:
-                            insert_game(cursor, game_id, match_id, last_frame.get("rfc460Timestamp"), game_num)
+                            insert_game(cursor, game_id, match_id, last_frame.get("rfc460Timestamp"), game_num, None, patch, None, None)
                         except Exception as e:
                             print(f"    ❌ Error insertando juego: {str(e)}")
                             continue
@@ -399,11 +397,12 @@ def importar_diferencial(connection, torneos_seleccionados):
                                 player_name = participant.get("summonerName")
                                 team_id = participant.get("teamId")
                                 champion_id = participant.get("championId")
+                                participant_id = participant.get("participantId")
                                 if not all([player_name, team_id, champion_id]):
                                     print(f"      ⚠ Datos incompletos en participante {p_idx + 1}")
                                     continue
                                 print(f"      👤 {player_name} (Team: {team_id}, Champion: {champion_id})")
-                                player_id = get_or_create_player(cursor, player_name, participant_id)
+                                player_id = get_or_create_player(cursor, player_name, participant_id, team_id)
                                 insert_participant(cursor, game_id, player_id, team_id, champion_id, participant)
                             except Exception as e:
                                 print(f"      ❌ Error insertando participante {p_idx + 1}: {str(e)}")

@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 import leaguepedia_parser
-from game_insert import  get_or_create_player, get_champion_id, insert_game_stats, insert_participant, insert_game, crear_o_actualizar_match
+from game_insert import  get_or_create_player, get_champion_id, insert_game_stats, insert_participant, insert_game, crear_match
 from datetime import timedelta
 from ratelimit import limits, sleep_and_retry
 
@@ -32,13 +32,12 @@ def procesar_torneo_leaguepedia(connection, torneo_id, nombre_torneo):
         
         for i, game in enumerate(games):
             print(f"\n    🕹️ Procesando juego {i+1}/{len(games)}")
-            tournament = leaguepedia_parser.get_tournaments("China", 2025)
 
             # Obtener detalles completos del juego
             game_details = leaguepedia_parser.get_game_details(game, add_page_id=True)
             
             # Procesar y guardar el juego en la base de datos
-            procesar_juego_leaguepedia(connection, game_details, torneo_id)
+            procesar_juego_leaguepedia(connection, game_details, torneo_id, nombre_torneo, i)
             
         print(f"✅ Procesamiento del torneo {nombre_torneo} completado")
         
@@ -48,8 +47,8 @@ def procesar_torneo_leaguepedia(connection, torneo_id, nombre_torneo):
         cursor.close()        
 
 @sleep_and_retry
-@limits(calls=28, period=80)
-def procesar_juego_leaguepedia(connection, game_details, torneo_id):
+@limits(calls=18, period=90)
+def procesar_juego_leaguepedia(connection, game_details, torneo_id, gamepedia_slug, index_gamepedia):
     cursor = connection.cursor(dictionary=True,buffered=True)
     
     try:
@@ -65,7 +64,7 @@ def procesar_juego_leaguepedia(connection, game_details, torneo_id):
         team_red_id = get_or_create_team_leaguepedia(connection, red_team_name)
         
         # Crear/actualizar match (BO5)
-        match_id = crear_o_actualizar_match(
+        match_id = crear_match(
             connection,
             torneo_id,
             team_blue_id,
@@ -81,7 +80,9 @@ def procesar_juego_leaguepedia(connection, game_details, torneo_id):
             datetime.fromisoformat(game_details.start),
             game_details.gameInSeries,# Usar número de juego en la serie
             game_details.duration,
-            game_details.patch    
+            game_details.patch,
+            gamepedia_slug,
+            index_gamepedia
         )
         
         # Procesar estadísticas de equipos
@@ -170,46 +171,32 @@ def get_or_create_team_leaguepedia(connection, team_name):
         cursor.close()
 
 def actualizar_resultados_match(cursor, match_id):
-    # Obtener todos los games y sus ganadores para el match dado
     cursor.execute("""
         SELECT 
-            g.id AS game_id,
-            gs.team_id,
-            gs.resultado
-        FROM game g
-        JOIN game_stats gs ON g.id = gs.game_id
-        WHERE g.match_id = %s AND gs.resultado IS NOT NULL
+            m.team1_id,
+            m.team2_id,
+            SUM(CASE WHEN gs.team_id = m.team1_id AND gs.resultado = 1 THEN 1 ELSE 0 END) AS team1_wins,
+            SUM(CASE WHEN gs.team_id = m.team2_id AND gs.resultado = 1 THEN 1 ELSE 0 END) AS team2_wins
+        FROM `match` m
+        LEFT JOIN game g ON g.match_id = m.id
+        LEFT JOIN game_stats gs ON g.id = gs.game_id 
+        WHERE m.id = %s
+        GROUP BY m.id, m.team1_id, m.team2_id
     """, (match_id,))
-    rows = cursor.fetchall()
-
-    # Obtener los equipos del match
-    cursor.execute("""
-        SELECT team1_id, team2_id FROM `match` WHERE id = %s
-    """, (match_id,))
-    team1_id, team2_id = cursor.fetchone()
-
-    # Inicializar contadores de victorias
-    team1_wins = 0
-    team2_wins = 0
-
-    # Contar victorias para cada equipo
-    for game_id, team_id, resultado in rows:
-        # El equipo con 'resultado' es el ganador
-        if resultado and team_id == team1_id:
-            team1_wins += 1
-        elif resultado and team_id == team2_id:
-            team2_wins += 1
-
-    # Calcular el formato Best-Of
-    max_wins = max(team1_wins, team2_wins)
-    if max_wins >= 3:
-        strategy_count = 5
-    elif max_wins == 2:
-        strategy_count = 3
+    result = cursor.fetchone()
+    if result is None:
+        team1_wins = team2_wins = 0
+        team1_id = team2_id = None
     else:
-        strategy_count = 1
+        team1_id = result['team1_id']
+        team2_id = result['team2_id']
+        team1_wins = int(result['team1_wins'] or 0)
+        team2_wins = int(result['team2_wins'] or 0)
 
-    # Actualizar el match
+
+    max_wins = max(team1_wins, team2_wins)
+    strategy_count = 5 if max_wins >= 3 else 3 if max_wins == 2 else 1
+
     cursor.execute("""
         UPDATE `match`
         SET team1_result = %s,
@@ -284,6 +271,8 @@ def procesar_estadisticas_equipo(cursor, game_id, team_id, side, team_data, is_w
         stats = team_data.endOfGameStats
         towers = stats.turretKills if hasattr(stats, "turretKills") else 0
         barons = stats.baronKills if hasattr(stats, "baronKills") else 0
+        num_dragons = stats.dragonKills if hasattr(stats, "dragonKills") else 0
+        dragons = ["drake"] * num_dragons 
     
     # Calcular oro total
     total_gold = sum(p.endOfGameStats.gold for p in team_data.players 
@@ -308,7 +297,7 @@ def procesar_jugador_leaguepedia(cursor, game_id, player_data, team_id, particip
     role = map_leaguepedia_role(player_data.role)
     player_name = getattr(getattr(getattr(player_data, "sources", {}), "leaguepedia", {}), "name", None)    
     # Obtener o crear jugador
-    player_id = get_or_create_player(cursor, player_name, participant_idx + 1)
+    player_id = get_or_create_player(cursor, player_name, participant_idx + 1, team_id)
     
     champion_id = get_champion_id(cursor, player_data.championName)
     
