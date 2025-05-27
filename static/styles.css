@@ -268,25 +268,86 @@ li:hover {
     border-radius: 50%;
     vertical-align: middle;
 }
+/* Contenedor principal del select */
 .select2-container--default .select2-selection--single {
     background-color: #333;
     border: 2px solid #555;
     min-height: 48px;
+    height: 48px; /* Asegura altura fija */
     font-size: 1.1rem;
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    border-radius: 6px;
+    transition: border-color 0.2s;
 }
+
+/* Texto seleccionado, alineado verticalmente */
 .select2-container--default .select2-selection__rendered {
     color: #fff !important;
-    line-height: 48px !important;
+    padding-left: 12px !important;
+    line-height: normal !important;
+    display: flex !important;
+    align-items: center !important;
+    height: 48px;
 }
+
+/* Icono del desplegable */
+.select2-container--default .select2-selection__arrow {
+    height: 48px !important;
+    right: 10px;
+    top: 0;
+    width: 32px;
+    display: flex;
+    align-items: center;
+}
+
+/* Dropdown */
+.select2-container--default .select2-dropdown {
+    background-color: #222;
+    border: 2px solid #555;
+    border-radius: 0 0 6px 6px;
+    margin-top: -2px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    z-index: 9999;
+}
+
+/* Opciones */
 .select2-results__option {
     color: #fff !important;
     font-size: 1.05rem;
+    padding: 12px 16px !important;
+    background-color: transparent;
+    transition: background 0.15s;
+    border-radius: 4px;
+    margin: 2px 4px;
 }
+
+/* Opción resaltada */
 .select2-results__option--highlighted {
     background-color: #444 !important;
     color: #fff !important;
 }
+
+/* Opción seleccionada */
+.select2-results__option[aria-selected="true"] {
+    background-color: #333 !important;
+    color: #fff !important;
+    font-weight: bold;
+}
+
+/* Elimina el espacio del select oculto */
+.select2-hidden-accessible {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0,0,0,0) !important;
+    border: 0 !important;
+}
+
 
 .linea-input {
     border: 2px solid #444;

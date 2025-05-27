@@ -101,6 +101,8 @@ def importar_diferencial(connection, torneos_seleccionados):
      # Mapeo de IDs de torneos Lolesports a nombres de torneos en Leaguepedia
     mapeo_torneos = {
         '113503620829714518': [
+            #'LPL/2025 Season/Split 2 Placements',
+            #'LPL/2025 Season/Split 2',
             'LPL/2025 Season/Split 2 Playoffs'
         ],
         '113481048385904309': [

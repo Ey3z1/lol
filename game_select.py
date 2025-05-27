@@ -166,6 +166,31 @@ def obtener_equipos_con_imagen():
     connection.close()
     return equipos
 
+def obtener_champions_con_imagen():
+    connection = mysql.connector.connect(**DB_CONFIG)
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT id, name, img as image 
+        FROM CHAMPION 
+        ORDER BY name
+    """)
+    champions = cursor.fetchall()
+    cursor.close()
+    connection.close()
+    return champions
+
+def obtener_campeon_por_id(champion_id):
+    connection = mysql.connector.connect(**DB_CONFIG)
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT id, name, img
+        FROM CHAMPION where id = %s
+    """, (champion_id,))
+    champion = cursor.fetchone()
+    cursor.close()
+    connection.close()
+    return champion
+
 
 def obtener_equipos_para_select():
     connection = mysql.connector.connect(**DB_CONFIG)
@@ -286,52 +311,73 @@ def obtener_jugador_por_id(jugador_id):
     
     return cursor.fetchone()
 
-def obtener_partidas_jugador(player_id):
+def obtener_partidas_jugador(player_id, bans):
     connection = mysql.connector.connect(**DB_CONFIG)
     cursor = connection.cursor(dictionary=True)
     
     try:
-        cursor.execute("""
-             SELECT
-                g.id AS game_id,
-                g.game_num,
-                g.start_time AS fecha,
-                p.kills,
-                CASE WHEN gs.resultado = 1 THEN TRUE ELSE FALSE END AS resultado,
-                c.img AS champion_img,
-                c.name AS champion_name,
-                t.name AS equipo_jugador,
-                t_oponente.name AS equipo_oponente
-            FROM participant p
-            JOIN game g ON p.game_id = g.id
-            JOIN game_stats gs ON g.id = gs.game_id AND p.team_id = gs.team_id
-            JOIN champion c ON p.champion_id = c.id
-            JOIN team t ON gs.team_id = t.id
-            JOIN game_stats gs_oponente 
-                ON g.id = gs_oponente.game_id 
-                AND gs_oponente.team_id != gs.team_id
-            JOIN team t_oponente ON gs_oponente.team_id = t_oponente.id
-            JOIN `match` m ON m.id = g.match_id
-            JOIN tournament tt on tt.id = m.tournamentId
-            WHERE p.player_id = %s and tt.activo = 1
-            ORDER BY g.start_time DESC
-        """, (player_id,))
-        
-        # partidas = []
-        # for row in cursor.fetchall():
-        #     partidas.append({
-        #         'game_id': row['game_id'],
-        #         'fecha': row['fecha'],
-        #         'kills': row['kills'],
-        #         'deaths': row['deaths'],
-        #         'assists': row['assists'],
-        #         'creep_score': row['creep_score'],
-        #         'champion': row['champion'],
-        #         'champion_img': row['champion_img'],
-        #         'resultado': row['resultado'],
-        #         'team': row['team_name'],
-        #         'vs_team': row['opponent_team']
-        #     })
+        # Generar placeholders dinámicamente
+        if bans:
+            ban_placeholders = ','.join(['%s'] * len(bans))
+            query = f"""
+                SELECT
+                    g.id AS game_id,
+                    g.game_num,
+                    g.start_time AS fecha,
+                    p.kills,
+                    CASE WHEN gs.resultado = 1 THEN TRUE ELSE FALSE END AS resultado,
+                    c.img AS champion_img,
+                    c.name AS champion_name,
+                    t.name AS equipo_jugador,
+                    t_oponente.name AS equipo_oponente
+                FROM participant p
+                JOIN game g ON p.game_id = g.id
+                JOIN game_stats gs ON g.id = gs.game_id AND p.team_id = gs.team_id
+                JOIN champion c ON p.champion_id = c.id
+                JOIN team t ON gs.team_id = t.id
+                JOIN game_stats gs_oponente 
+                    ON g.id = gs_oponente.game_id 
+                    AND gs_oponente.team_id != gs.team_id
+                JOIN team t_oponente ON gs_oponente.team_id = t_oponente.id
+                JOIN `match` m ON m.id = g.match_id
+                JOIN tournament tt on tt.id = m.tournamentId
+                WHERE p.player_id = %s 
+                    AND tt.activo = 1 
+                    AND c.id NOT IN ({ban_placeholders})
+                ORDER BY g.start_time DESC
+            """
+            
+            # Combinar parámetros: player_id + lista de bans
+            params = [player_id] + list(bans)
+            cursor.execute(query, params)
+        else:
+            # Si no hay bans, ejecutar consulta sin filtro de campeones
+            query = """
+                SELECT
+                    g.id AS game_id,
+                    g.game_num,
+                    g.start_time AS fecha,
+                    p.kills,
+                    CASE WHEN gs.resultado = 1 THEN TRUE ELSE FALSE END AS resultado,
+                    c.img AS champion_img,
+                    c.name AS champion_name,
+                    t.name AS equipo_jugador,
+                    t_oponente.name AS equipo_oponente
+                FROM participant p
+                JOIN game g ON p.game_id = g.id
+                JOIN game_stats gs ON g.id = gs.game_id AND p.team_id = gs.team_id
+                JOIN champion c ON p.champion_id = c.id
+                JOIN team t ON gs.team_id = t.id
+                JOIN game_stats gs_oponente 
+                    ON g.id = gs_oponente.game_id 
+                    AND gs_oponente.team_id != gs.team_id
+                JOIN team t_oponente ON gs_oponente.team_id = t_oponente.id
+                JOIN `match` m ON m.id = g.match_id
+                JOIN tournament tt on tt.id = m.tournamentId
+                WHERE p.player_id = %s AND tt.activo = 1
+                ORDER BY g.start_time DESC
+            """
+            cursor.execute(query, (player_id,))
             
         return cursor.fetchall()
     finally:

@@ -151,7 +151,7 @@ def get_champion_id(cursor, champion_code):
     """Obtiene el ID del campeón (lo crea si no existe), eliminando espacios y comillas simples"""
     try:
         # Limpiar el código: eliminar todos los espacios y comillas simples
-        clean_code = champion_code.replace(' ', '').replace("'", "").replace("Wukong", "MonkeyKing").replace("Renata Glasc", "Renata")
+        clean_code = champion_code.replace("Wukong", "MonkeyKing").replace("Renata Glasc", "Renata").replace(' ', '').replace("'", "")
         
         # Intentar insertar el campeón (IGNORE evita errores si ya existe)
         cursor.execute(
@@ -287,9 +287,15 @@ def ajustar_games_match(conn, match_id):
     try:
         # Verificar si hay juegos sin resultado para el match
         print(f"Verificando juegos sin resultado para el match {match_id}...")
-        cursor.execute('''SELECT COUNT(*) FROM game g
-                  JOIN game_stats gs ON g.id = gs.game_id
-                  WHERE g.match_id = %s AND gs.resultado IS NULL''', (match_id,))
+        cursor.execute('''
+            SELECT COUNT(*)
+            FROM game g
+            JOIN `match` m ON g.match_id = m.id
+            LEFT JOIN game_stats gs1 ON gs1.game_id = g.id AND gs1.team_id = m.team1_id
+            LEFT JOIN game_stats gs2 ON gs2.game_id = g.id AND gs2.team_id = m.team2_id
+            WHERE g.match_id = %s
+            AND ((gs1.resultado IS NULL OR gs1.resultado = 0) AND (gs2.resultado IS NULL OR gs2.resultado = 0))
+        ''', (match_id,))
         resultado = cursor.fetchone()
         pendientes = resultado[0] if resultado else 0  # Si no hay resultados, usa 0
         if pendientes == 0:
@@ -330,45 +336,63 @@ def ajustar_games_match(conn, match_id):
         if team1_games < team1_result:
             to_fix = team1_result - team1_games
             print(f"Ajustando {to_fix} juegos para team1 ({team1_id})...")
-            # Actualiza ambos equipos en una sola consulta usando JOIN y CASE
-            cursor.execute('''UPDATE game_stats gs
-                              JOIN game g ON g.id = gs.game_id
-                              JOIN (
-                                  SELECT g.id AS game_id
-                                  FROM game g
-                                  JOIN game_stats gs_inner ON g.id = gs_inner.game_id
-                                  WHERE g.match_id = %s 
-                                    AND gs_inner.team_id = %s 
-                                    AND gs_inner.resultado IS NULL
-                                  LIMIT %s
-                              ) AS sub ON g.id = sub.game_id
-                              SET gs.resultado = CASE 
-                                  WHEN gs.team_id = %s THEN '1' 
-                                  ELSE '0' 
-                              END
-                              WHERE gs.team_id IN (%s, %s)''', 
-                              (match_id, team1_id, to_fix, team1_id, team1_id, team2_id))
 
+            # Selecciona solo los game_id donde AMBOS equipos tienen resultado NULL o 0
+            cursor.execute('''
+                SELECT g.id
+                FROM game g
+                JOIN game_stats gs1 ON g.id = gs1.game_id AND gs1.team_id = %s
+                JOIN game_stats gs2 ON g.id = gs2.game_id AND gs2.team_id = %s
+                WHERE g.match_id = %s
+                AND (gs1.resultado IS NULL OR gs1.resultado = '0')
+                AND (gs2.resultado IS NULL OR gs2.resultado = '0')
+                ORDER BY g.id ASC
+                LIMIT %s
+            ''', (team1_id, team2_id, match_id, to_fix))
+            target_games = [row[0] for row in cursor.fetchall()]
+
+            if target_games:
+                cursor.execute(f'''
+                    UPDATE game_stats gs
+                    JOIN game g ON g.id = gs.game_id
+                    SET gs.resultado = CASE 
+                        WHEN gs.team_id = %s THEN '1' 
+                        ELSE '0' 
+                    END
+                    WHERE g.id IN ({','.join(['%s']*len(target_games))})
+                    AND gs.team_id IN (%s, %s)
+                ''', (team1_id, *target_games, team1_id, team2_id))
+
+        # Ajuste para team2
         if team2_games < team2_result:
             to_fix = team2_result - team2_games
             print(f"Ajustando {to_fix} juegos para team2 ({team2_id})...")
-            cursor.execute('''UPDATE game_stats gs
-                              JOIN game g ON g.id = gs.game_id
-                              JOIN (
-                                  SELECT g.id AS game_id
-                                  FROM game g
-                                  JOIN game_stats gs_inner ON g.id = gs_inner.game_id
-                                  WHERE g.match_id = %s 
-                                    AND gs_inner.team_id = %s 
-                                    AND gs_inner.resultado IS NULL
-                                  LIMIT %s
-                              ) AS sub ON g.id = sub.game_id
-                              SET gs.resultado = CASE 
-                                  WHEN gs.team_id = %s THEN '1' 
-                                  ELSE '0' 
-                              END
-                              WHERE gs.team_id IN (%s, %s)''', 
-                              (match_id, team2_id, to_fix, team2_id, team2_id, team1_id))
+
+            cursor.execute('''
+                SELECT g.id
+                FROM game g
+                JOIN game_stats gs1 ON g.id = gs1.game_id AND gs1.team_id = %s
+                JOIN game_stats gs2 ON g.id = gs2.game_id AND gs2.team_id = %s
+                WHERE g.match_id = %s
+                AND (gs1.resultado IS NULL OR gs1.resultado = '0')
+                AND (gs2.resultado IS NULL OR gs2.resultado = '0')
+                ORDER BY g.id ASC
+                LIMIT %s
+            ''', (team2_id, team1_id, match_id, to_fix))
+            target_games = [row[0] for row in cursor.fetchall()]
+
+            if target_games:
+                cursor.execute(f'''
+                    UPDATE game_stats gs
+                    JOIN game g ON g.id = gs.game_id
+                    SET gs.resultado = CASE 
+                        WHEN gs.team_id = %s THEN '1' 
+                        ELSE '0' 
+                    END
+                    WHERE g.id IN ({','.join(['%s']*len(target_games))})
+                    AND gs.team_id IN (%s, %s)
+                ''', (team2_id, *target_games, team2_id, team1_id))
+
 
         print(f"✅ Resultados ajustados correctamente para el match {match_id}.")
     except mysql.connector.Error as e:

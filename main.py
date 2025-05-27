@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import time
 import requests
 from game_importer import importar_diferencial, obtener_torneos_de_bbdd, obtener_torneos_con_matches_de_bbdd  # Importación clave
-from game_select import obtener_games_por_match,obtener_matches_por_torneo,obtener_torneo_por_id, obtener_equipos_con_imagen, obtener_jugadores_por_equipos, obtener_jugador_por_id, obtener_partidas_jugador  # Importación clave
+from game_select import obtener_games_por_match,obtener_matches_por_torneo,obtener_torneo_por_id, obtener_campeon_por_id,obtener_equipos_con_imagen,obtener_champions_con_imagen, obtener_jugadores_por_equipos, obtener_jugador_por_id, obtener_partidas_jugador  # Importación clave
 import math
 from datetime import datetime
 import ast
@@ -114,7 +114,8 @@ def calcular_linea(avg_kills, probabilidad):
 @app.route('/futuras_partidas', methods=['GET', 'POST'])
 def futuras_partidas():
     equipos = obtener_equipos_con_imagen()
-    
+    champions = obtener_champions_con_imagen()
+
     if request.method == 'POST':
         team1_id = request.form.get('team1')
         team2_id = request.form.get('team2')
@@ -151,6 +152,7 @@ def futuras_partidas():
                             jugadores_team2=jugadores_team2,
                             cuota1=cuota1,
                             cuota2=cuota2,
+                            champions = champions,
                             prob_team1=round(prob_team1*100, 1),
                             prob_team2=round(prob_team2*100, 1))
     
@@ -175,6 +177,19 @@ def ev_calculo():
     team1_id = team1_dict['id']
     cuota1 = float(data.get('cuota1'))
     cuota2 = float(data.get('cuota2'))
+    bans = data.getlist('bans[]')
+
+    banned_champs = []
+    for ban_id in bans:
+        if ban_id:  # Verificar que no esté vacío
+            ban_id_int = int(ban_id)
+            campeon = obtener_campeon_por_id(ban_id_int)
+            if campeon:
+                banned_champs.append({
+                    'id': ban_id,
+                    'name': campeon['name'],
+                    'img': campeon['img']
+                })
 
     # Extraer datos de equipos
     team1_id = team1_dict['id']
@@ -197,7 +212,7 @@ def ev_calculo():
             cuota_under = float(data.get(f'cuotaUnder_{jugador_id}'))
             
             jugador = obtener_jugador_por_id(jugador_id)
-            partidas = obtener_partidas_jugador(jugador_id)
+            partidas = obtener_partidas_jugador(jugador_id, bans)
             
             # Determinar a qué equipo pertenece
             if jugador['team_id'] == int(team1_id):
@@ -255,6 +270,7 @@ def ev_calculo():
     return render_template(
         'ev_calculo.html',
         jugadores=jugadores,
+        banned_champs=banned_champs,
         team1_name=team1_name,
         team2_name=team2_name,
         team1_img=team1_img,
