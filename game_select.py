@@ -383,3 +383,21 @@ def obtener_partidas_jugador(player_id, bans):
     finally:
         cursor.close()
         connection.close()
+
+def obtener_max_index_leaguepedia(connection, torneo_id):
+    """Retorna el máximo index_leaguepedia registrado para el torneo"""
+    cursor = connection.cursor()
+    try:
+        query = """
+        SELECT COALESCE(MAX(index_leaguepedia), 0) 
+        FROM game 
+        WHERE leaguepedia_slug = %s
+        """
+        cursor.execute(query, (torneo_id,))
+        result = cursor.fetchone()
+        return result[0] if result else 0
+    except Exception as e:
+        print(f"Error obteniendo máximo índice: {str(e)}")
+        return 0
+    finally:
+        cursor.close()

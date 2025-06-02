@@ -3,6 +3,7 @@ import leaguepedia_parser
 from game_insert import  get_or_create_player, get_champion_id, insert_game_stats, insert_participant, insert_game, crear_match
 from datetime import timedelta
 from ratelimit import limits, sleep_and_retry
+from game_select import obtener_max_index_leaguepedia
 
 # Configuración de la base de datos
 DB_CONFIG = {
@@ -13,38 +14,37 @@ DB_CONFIG = {
 }
 
 def procesar_torneo_leaguepedia(connection, torneo_id, nombre_torneo):
-    """
-    Procesa un torneo completo de Leaguepedia y guarda sus datos en la base de datos.
-    
-    Args:
-        connection: Conexión a la base de datos MySQL
-        torneo_id: ID del torneo en nuestra base de datos
-        nombre_torneo: Nombre del torneo en formato Leaguepedia (ej. "LPL/2025 Season/Split 2")
-    """
     cursor = connection.cursor(dictionary=True)
     
     try:
-        print(f"\n🏆 Procesando torneo {nombre_torneo} desde Leaguepedia")
+        print(f"\n🏆 Procesando torneo {nombre_torneo}")
         
-        # Obtener todos los juegos del torneo
+        # Paso 1: Obtener máximo índice existente
+        max_index = obtener_max_index_leaguepedia(connection, nombre_torneo)
+        print(f"🔝 Último índice procesado: {max_index}")
+        
+        # Paso 2: Obtener juegos desde Leaguepedia
         games = leaguepedia_parser.get_games(nombre_torneo)
-        print(f"🎮 Encontrados {len(games)} juegos en Leaguepedia")
+        print(f"🎮 Juegos disponibles en API: {len(games)}")
         
-        for i, game in enumerate(games):
-            print(f"\n    🕹️ Procesando juego {i+1}/{len(games)}")
-
-            # Obtener detalles completos del juego
-            game_details = leaguepedia_parser.get_game_details(game, add_page_id=True)
+        # Paso 3: Filtrar juegos nuevos
+        nuevos_juegos = [(i, g) for i, g in enumerate(games) if i > max_index]
+        print(f"🆕 Juegos por procesar: {len(nuevos_juegos)}")
+        
+        # Paso 4: Procesar solo juegos nuevos
+        for indice_original, game in nuevos_juegos:
+            print(f"\n    🕹️ Procesando juego {indice_original+1}/{len(games)}")
+            game_details = leaguepedia_parser.get_game_details(game)
+            procesar_juego_leaguepedia(connection, game_details, torneo_id, nombre_torneo, indice_original)
             
-            # Procesar y guardar el juego en la base de datos
-            procesar_juego_leaguepedia(connection, game_details, torneo_id, nombre_torneo, i)
-            
-        print(f"✅ Procesamiento del torneo {nombre_torneo} completado")
+        print(f"✅ Procesamiento completado. Nuevos registros: {len(nuevos_juegos)}")
         
     except Exception as e:
-        print(f"❌ Error procesando torneo: {str(e)}")
+        connection.rollback()
+        print(f"❌ Error crítico: {str(e)}")
     finally:
-        cursor.close()        
+        cursor.close()
+   
 
 @sleep_and_retry
 @limits(calls=18, period=90)

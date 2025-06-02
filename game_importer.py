@@ -1,6 +1,6 @@
+import calendar
 import requests
-from datetime import datetime, timedelta
-import time
+from datetime import datetime, timezone
 from game_importer_leaguepedia import procesar_torneo_leaguepedia
 from game_insert import *
 
@@ -84,10 +84,17 @@ def fetch_game_data(game_id):
     except Exception as e:
         print(f"❌ Error obteniendo datos del game {game_id}: {e}")
         return None
+    
 def get_formatted_starting_time():
-    now = datetime.utcnow() - timedelta(seconds=30)
-    rounded_seconds = int(time.mktime(now.timetuple()) // 10 * 10)
-    return datetime.utcfromtimestamp(rounded_seconds).isoformat() + "Z"
+    # Usar datetime.now() con timezone UTC explícito
+    now = datetime.now(timezone.utc) - timedelta(seconds=30)
+    
+    # Usar calendar.timegm() para tiempo UTC
+    rounded_seconds = int(calendar.timegm(now.timetuple()) // 10 * 10)
+    
+    # Usar fromtimestamp() con timezone UTC explícito
+    fecha_utc = datetime.fromtimestamp(rounded_seconds, tz=timezone.utc)
+    return fecha_utc.strftime('%Y-%m-%dT%H:%M:%S') + 'Z'
 
 def get_team_code_from_participant(participant):
     """Extrae el código del equipo del summonerName del primer participante."""

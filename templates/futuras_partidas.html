@@ -251,7 +251,7 @@
         const cuotaMap = new Map([
             ['1.85', '1.85'], ['1.8', '1.9'], ['1.95', '1.75'],
             ['2.4', '1.5'], ['1.65', '2.1'], ['2', '1.7'],
-            ['1.6', '2.2'], ['1.55', '2.3']
+            ['1.6', '2.2'], ['1.55', '2.3'], ['1.4', '2.7']
         ]);
 
         // Normalizar entrada (compatibilidad con coma y punto decimal)
@@ -275,7 +275,7 @@
         };
 
         // Control de eventos con delegación
-        $(document).on('input', '.cuota-under, .cuota-over', function() {
+        $(document).on('input', '.cuota-over', function() {
             const $input = $(this);
             const esOver = $input.hasClass('cuota-over');
             const $fila = $input.closest('.fila-jugador');

@@ -151,7 +151,7 @@ def get_champion_id(cursor, champion_code):
     """Obtiene el ID del campeón (lo crea si no existe), eliminando espacios y comillas simples"""
     try:
         # Limpiar el código: eliminar todos los espacios y comillas simples
-        clean_code = champion_code.replace("Wukong", "MonkeyKing").replace("Renata Glasc", "Renata").replace(' ', '').replace("'", "")
+        clean_code = champion_code.replace("Wukong", "MonkeyKing").replace("Renata Glasc", "Renata").replace(' ', '').replace("'", "").replace("RenataGlasc", "Renata")
         
         # Intentar insertar el campeón (IGNORE evita errores si ya existe)
         cursor.execute(
