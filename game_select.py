@@ -331,7 +331,7 @@ def obtener_partidas_jugador(player_id, bans):
                     AND gs_oponente.team_id != gs.team_id
                 JOIN TEAM t_oponente ON gs_oponente.team_id = t_oponente.id
                 JOIN MATCHES m ON m.id = g.match_id
-                JOIN tournament tt on tt.id = m.tournament_id
+                JOIN TOURNAMENT tt on tt.id = m.tournament_id
                 WHERE p.player_id = %s 
                     AND tt.activo = 1 
                     AND c.id NOT IN ({ban_placeholders})
@@ -364,7 +364,7 @@ def obtener_partidas_jugador(player_id, bans):
                     AND gs_oponente.team_id != gs.team_id
                 JOIN TEAM t_oponente ON gs_oponente.team_id = t_oponente.id
                 JOIN MATCHES m ON m.id = g.match_id
-                JOIN tournament tt on tt.id = m.tournament_id
+                JOIN TOURNAMENT tt on tt.id = m.tournament_id
                 WHERE p.player_id = %s AND tt.activo = 1
                 ORDER BY g.start_time DESC
             """
