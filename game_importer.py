@@ -132,7 +132,7 @@ def importar_diferencial(connection, torneos_seleccionados):
                 print(f"⚠ No se encontraron eventos para el torneo {torneo_id}")
                 continue
 
-            # 2. Crear todos los matches del torneo si no existen
+            # 2. Crear todos los MATCHES del torneo si no existen
             print("🔍 Creando/Actualizando matches...")
             for event in eventos:
                 match_data = event.get("match", {})
@@ -175,12 +175,12 @@ def importar_diferencial(connection, torneos_seleccionados):
                     connection=connection
                 )
 
-            # 3. Ahora obtener matches SIN juegos (incluyendo los recién creados)
+            # 3. Ahora obtener MATCHES SIN juegos (incluyendo los recién creados)
             query = """
                 SELECT M.id 
-                FROM `MATCH` M
+                FROM MATCHES M
                 LEFT JOIN GAME G ON M.id = G.match_id
-                WHERE M.tournamentId = %s
+                WHERE M.tournament_id = %s
                 AND G.id IS NULL
             """
             cursor.execute(query, (torneo_id,))

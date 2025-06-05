@@ -34,10 +34,10 @@ def obtener_matches_por_torneo(torneo_id):
             # Añadir conteo de victorias para mostrar resultados
             m.team1_result,
             m.team2_result
-        FROM `MATCH` m
+        FROM MATCHES m
         JOIN TEAM t1 ON m.team1_id = t1.id
         JOIN TEAM t2 ON m.team2_id = t2.id
-        WHERE m.tournamentId = %s
+        WHERE m.tournament_id = %s
         ORDER BY start_time DESC
     """, (torneo_id,))
     
@@ -135,7 +135,7 @@ def obtener_match_por_id(match_id):
     cursor = connection.cursor(dictionary=True)
     cursor.execute("""
         SELECT id, description 
-        FROM `MATCH` 
+        FROM MATCHES 
         WHERE id = %s
         ORDER BY start_time desc
     """, (match_id,))
@@ -265,7 +265,7 @@ def obtener_jugadores_por_equipos(team1_id, team2_id):
 #             FROM PARTICIPANT p
 #             JOIN SPORTS_PLAYER sp ON p.player_id = sp.id
 #             JOIN TEAM t ON p.team_id = t.id
-#             JOIN `MATCH` m ON p.match_id = m.id
+#             JOIN MATCHES m ON p.match_id = m.id
 #             WHERE t.id IN (%s, %s)
 #             GROUP BY p.player_id
 #         """, (team1_id, team2_id))
@@ -330,8 +330,8 @@ def obtener_partidas_jugador(player_id, bans):
                     ON g.id = gs_oponente.game_id 
                     AND gs_oponente.team_id != gs.team_id
                 JOIN TEAM t_oponente ON gs_oponente.team_id = t_oponente.id
-                JOIN `MATCH` m ON m.id = g.match_id
-                JOIN tournament tt on tt.id = m.tournamentId
+                JOIN MATCHES m ON m.id = g.match_id
+                JOIN tournament tt on tt.id = m.tournament_id
                 WHERE p.player_id = %s 
                     AND tt.activo = 1 
                     AND c.id NOT IN ({ban_placeholders})
@@ -363,8 +363,8 @@ def obtener_partidas_jugador(player_id, bans):
                     ON g.id = gs_oponente.game_id 
                     AND gs_oponente.team_id != gs.team_id
                 JOIN TEAM t_oponente ON gs_oponente.team_id = t_oponente.id
-                JOIN `MATCH` m ON m.id = g.match_id
-                JOIN tournament tt on tt.id = m.tournamentId
+                JOIN MATCHES m ON m.id = g.match_id
+                JOIN tournament tt on tt.id = m.tournament_id
                 WHERE p.player_id = %s AND tt.activo = 1
                 ORDER BY g.start_time DESC
             """

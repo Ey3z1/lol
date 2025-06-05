@@ -194,7 +194,7 @@ def obtener_torneos_con_matches_de_bbdd():
     cursor.execute("""
         SELECT DISTINCT t.id, t.slug as name
         FROM TOURNAMENT t
-        JOIN `MATCH` m ON t.id = m.tournamentId
+        JOIN MATCHES m ON t.id = m.tournament_id
         WHERE t.slug LIKE %s
         ORDER BY t.id DESC
     """, (f"%{current_year}%",))
@@ -222,14 +222,14 @@ def get_or_create_team(team_code, team_name, team_image, connection):
 def get_or_create_match(match_id, tournament_id, strategy_type, strategy_count, team1_result, team2_result,
                         team1_id, team2_id, block_name, start_time, connection):
     cur = connection.cursor()
-    cur.execute("SELECT id FROM `MATCH` WHERE id = %s", (match_id,))
+    cur.execute("SELECT id FROM MATCHES WHERE id = %s", (match_id,))
     row = cur.fetchone()
     if row:
         cur.close()
         return row[0]
     cur.execute("""
-        INSERT INTO `MATCH`
-        (id, tournamentId, strategy_type, strategy_count, team1_result, team2_result, team1_id, team2_id,
+        INSERT INTO matches
+        (id, tournament_id, strategy_type, strategy_count, team1_result, team2_result, team1_id, team2_id,
          block_name, start_time)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     """, (match_id, tournament_id, strategy_type, strategy_count, team1_result, team2_result,
@@ -284,7 +284,7 @@ def ajustar_games_match(conn, match_id):
         cursor.execute('''
             SELECT COUNT(*)
             FROM GAME g
-            JOIN `MATCH` m ON g.match_id = m.id
+            JOIN MATCHES m ON g.match_id = m.id
             LEFT JOIN GAME_STATS gs1 ON gs1.game_id = g.id AND gs1.team_id = m.team1_id
             LEFT JOIN GAME_STATS gs2 ON gs2.game_id = g.id AND gs2.team_id = m.team2_id
             WHERE g.match_id = %s
@@ -298,7 +298,7 @@ def ajustar_games_match(conn, match_id):
 
         # Obtener información del match específico
         print(f"Obteniendo información del match {match_id}...")
-        cursor.execute("SELECT team1_id, team2_id, team1_result, team2_result FROM `MATCH` WHERE id = %s", (match_id,))
+        cursor.execute("SELECT team1_id, team2_id, team1_result, team2_result FROM MATCHES WHERE id = %s", (match_id,))
         match = cursor.fetchone()
         if not match:
             print(f"No se encontró el match con id {match_id}.")
@@ -420,7 +420,7 @@ def crear_match(connection, torneo_id, team_blue_id, team_red_id, game_details):
         dt = datetime.fromisoformat(game_details.start.replace('Z', '+00:00'))
         mysql_datetime = dt.strftime('%Y-%m-%d %H:%M:%S')
         # Buscar si ya existe el match
-        cursor.execute("SELECT team1_result, team2_result, strategy_count FROM `MATCH` WHERE id = %s", (match_id,))
+        cursor.execute("SELECT team1_result, team2_result, strategy_count FROM MATCHES WHERE id = %s", (match_id,))
         row = cursor.fetchone()
 
         if not row:
@@ -429,8 +429,8 @@ def crear_match(connection, torneo_id, team_blue_id, team_red_id, game_details):
             team2_result = 1 if winner_team_id == team_red_id else 0
             strategy_count = 1
             cursor.execute("""
-                INSERT INTO `MATCH`
-                (id, tournamentId, strategy_type, strategy_count, team1_result, team2_result, team1_id, team2_id, start_time)
+                INSERT INTO matches
+                (id, tournament_id, strategy_type, strategy_count, team1_result, team2_result, team1_id, team2_id, start_time)
                 VALUES (%s, %s, 'bestOf', %s, %s, %s, %s, %s, %s)
             """, (match_id, torneo_id, strategy_count, team1_result, team2_result, team_blue_id, team_red_id, mysql_datetime))
 

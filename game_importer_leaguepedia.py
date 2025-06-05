@@ -169,7 +169,7 @@ def actualizar_resultados_match(cursor, match_id):
             m.team2_id,
             SUM(CASE WHEN gs.team_id = m.team1_id AND gs.resultado = 1 THEN 1 ELSE 0 END) AS team1_wins,
             SUM(CASE WHEN gs.team_id = m.team2_id AND gs.resultado = 1 THEN 1 ELSE 0 END) AS team2_wins
-        FROM `MATCH` m
+        FROM MATCHES m
         LEFT JOIN GAME g ON g.match_id = m.id
         LEFT JOIN GAME_STATS gs ON g.id = gs.game_id 
         WHERE m.id = %s
@@ -190,7 +190,7 @@ def actualizar_resultados_match(cursor, match_id):
     strategy_count = 5 if max_wins >= 3 else 3 if max_wins == 2 else 1
 
     cursor.execute("""
-        UPDATE `MATCH`
+        UPDATE matches
         SET team1_result = %s,
             team2_result = %s,
             strategy_count = %s
