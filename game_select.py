@@ -381,7 +381,7 @@ def obtener_max_index_leaguepedia(connection, torneo_id):
     try:
         query = """
         SELECT COALESCE(MAX(index_leaguepedia), 0) 
-        FROM game 
+        FROM GAME 
         WHERE leaguepedia_slug = %s
         """
         cursor.execute(query, (torneo_id,))
