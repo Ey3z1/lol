@@ -228,7 +228,7 @@ def get_or_create_match(match_id, tournament_id, strategy_type, strategy_count, 
         cur.close()
         return row[0]
     cur.execute("""
-        INSERT INTO matches
+        INSERT INTO MATCHES
         (id, tournament_id, strategy_type, strategy_count, team1_result, team2_result, team1_id, team2_id,
          block_name, start_time)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -429,7 +429,7 @@ def crear_match(connection, torneo_id, team_blue_id, team_red_id, game_details):
             team2_result = 1 if winner_team_id == team_red_id else 0
             strategy_count = 1
             cursor.execute("""
-                INSERT INTO matches
+                INSERT INTO MATCHES
                 (id, tournament_id, strategy_type, strategy_count, team1_result, team2_result, team1_id, team2_id, start_time)
                 VALUES (%s, %s, 'bestOf', %s, %s, %s, %s, %s, %s)
             """, (match_id, torneo_id, strategy_count, team1_result, team2_result, team_blue_id, team_red_id, mysql_datetime))

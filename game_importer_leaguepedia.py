@@ -190,7 +190,7 @@ def actualizar_resultados_match(cursor, match_id):
     strategy_count = 5 if max_wins >= 3 else 3 if max_wins == 2 else 1
 
     cursor.execute("""
-        UPDATE matches
+        UPDATE MATCHES
         SET team1_result = %s,
             team2_result = %s,
             strategy_count = %s
