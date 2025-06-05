@@ -5,14 +5,6 @@ from datetime import timedelta
 from ratelimit import limits, sleep_and_retry
 from game_select import obtener_max_index_leaguepedia
 
-# Configuración de la base de datos
-DB_CONFIG = {
-    "host": "localhost",
-    "user": "root",
-    "password": "Rodriguez123",
-    "database": "league"
-}
-
 def procesar_torneo_leaguepedia(connection, torneo_id, nombre_torneo):
     cursor = connection.cursor(dictionary=True)
     
@@ -147,7 +139,7 @@ def get_or_create_team_leaguepedia(connection, team_name):
     cursor = connection.cursor()
     try:
         # Buscar por nombre
-        cursor.execute("SELECT id FROM team WHERE name LIKE %s", ('%' + team_name + '%',))        
+        cursor.execute("SELECT id FROM TEAM WHERE name LIKE %s", ('%' + team_name + '%',))        
         result = cursor.fetchone()
         if result:
             return result[0]
@@ -162,7 +154,7 @@ def get_or_create_team_leaguepedia(connection, team_name):
 
         # Insertar nuevo equipo con nuevo id
         cursor.execute(
-            "INSERT INTO team (id, name) VALUES (%s, %s)",
+            "INSERT INTO TEAM (id, name) VALUES (%s, %s)",
             (new_id, team_name)
         )
         connection.commit()
@@ -177,9 +169,9 @@ def actualizar_resultados_match(cursor, match_id):
             m.team2_id,
             SUM(CASE WHEN gs.team_id = m.team1_id AND gs.resultado = 1 THEN 1 ELSE 0 END) AS team1_wins,
             SUM(CASE WHEN gs.team_id = m.team2_id AND gs.resultado = 1 THEN 1 ELSE 0 END) AS team2_wins
-        FROM `match` m
-        LEFT JOIN game g ON g.match_id = m.id
-        LEFT JOIN game_stats gs ON g.id = gs.game_id 
+        FROM `MATCH` m
+        LEFT JOIN GAME g ON g.match_id = m.id
+        LEFT JOIN GAME_STATS gs ON g.id = gs.game_id 
         WHERE m.id = %s
         GROUP BY m.id, m.team1_id, m.team2_id
     """, (match_id,))
@@ -198,7 +190,7 @@ def actualizar_resultados_match(cursor, match_id):
     strategy_count = 5 if max_wins >= 3 else 3 if max_wins == 2 else 1
 
     cursor.execute("""
-        UPDATE `match`
+        UPDATE `MATCH`
         SET team1_result = %s,
             team2_result = %s,
             strategy_count = %s
@@ -227,7 +219,7 @@ def get_or_create_team_by_name(connection, team_name):
     cursor = connection.cursor()
     try:
         # Buscar equipo existente
-        cursor.execute("SELECT id FROM team WHERE name = %s", (team_name,))
+        cursor.execute("SELECT id FROM TEAM WHERE name = %s", (team_name,))
         result = cursor.fetchone()
         if result:
             return result[0] if isinstance(result, tuple) else result["id"]
@@ -237,7 +229,7 @@ def get_or_create_team_by_name(connection, team_name):
         
         # Insertar nuevo equipo
         cursor.execute(
-            "INSERT INTO team (code, name) VALUES (%s, %s)",
+            "INSERT INTO TEAM (code, name) VALUES (%s, %s)",
             (team_code, team_name)
         )
         connection.commit()

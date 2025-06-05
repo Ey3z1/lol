@@ -8,20 +8,11 @@ from game_select import obtener_games_por_match,obtener_matches_por_torneo,obten
 import math
 from datetime import datetime
 import ast
-
+from config_local import DB_CONFIG, API_KEY
 
 
 app = Flask(__name__)
 
-# Usa la misma configuración que tu script
-DB_CONFIG = {
-    "host": "localhost",
-    "user": "root",
-    "password": "Rodriguez123",
-    "database": "league"
-}
-
-API_KEY = "0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z"
 HEADERS = {
     "x-api-key": API_KEY,
     "Origin": "https://lolesports.com"

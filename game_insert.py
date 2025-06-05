@@ -2,14 +2,8 @@ import mysql.connector
 from datetime import datetime, timedelta
 import time
 import hashlib
+from config_local import DB_CONFIG
 
-# Configuración de la base de datos
-DB_CONFIG = {
-    "host": "localhost",
-    "user": "root",
-    "password": "Rodriguez123",
-    "database": "league"
-}
 
 def get_or_create_player(cursor, player_name, participant_id, team_id):
     cursor.execute("SELECT id FROM SPORTS_PLAYER WHERE name like %s  and team_id = %s ", ('%' + player_name, team_id,))
@@ -89,7 +83,7 @@ def insert_game_stats(cursor, game_id, team_id, side, stats, resultado):
 
 def insert_participant(cursor, game_id, player_id, team_id, champion_id, data):
     cursor.execute("""
-        INSERT INTO participant 
+        INSERT INTO PARTICIPANT 
         (game_id, player_id, team_id, champion_id, kills, deaths, assists, num_participant, total_gold, creep_score)
          VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     """, (
@@ -120,7 +114,7 @@ def get_team_code_from_participant(participant):
 def get_team_id_by_code(cursor, team_code):
     """Obtiene el team_id usando el código extraído"""
     cursor.execute(
-        "SELECT id FROM team WHERE code = %s",
+        "SELECT id FROM TEAM WHERE code = %s",
         (team_code,)
     )
     result = cursor.fetchone()
@@ -135,7 +129,7 @@ def get_team_id_by_code(cursor, team_code):
 def get_team_code_by_id(cursor, team_id):
     """Obtiene el código del equipo usando el team_id"""
     cursor.execute(
-        "SELECT code FROM team WHERE id = %s",
+        "SELECT code FROM TEAM WHERE id = %s",
         (team_id,)
     )
     result = cursor.fetchone()
@@ -155,7 +149,7 @@ def get_champion_id(cursor, champion_code):
         
         # Intentar insertar el campeón (IGNORE evita errores si ya existe)
         cursor.execute(
-            "INSERT IGNORE INTO champion (name, img) VALUES (%s, %s)",
+            "INSERT IGNORE INTO CHAMPION (name, img) VALUES (%s, %s)",
             (
                 clean_code,
                 'https://ddragon.leagueoflegends.com/cdn/15.9.1/img/champion/' + clean_code + '.png'
@@ -168,7 +162,7 @@ def get_champion_id(cursor, champion_code):
         
         # Si no se insertó (ya existía), buscamos el ID existente
         cursor.execute(
-            "SELECT id FROM champion WHERE name = %s",
+            "SELECT id FROM CHAMPION WHERE name = %s",
             (clean_code,)
         )
         result = cursor.fetchone()
@@ -289,10 +283,10 @@ def ajustar_games_match(conn, match_id):
         print(f"Verificando juegos sin resultado para el match {match_id}...")
         cursor.execute('''
             SELECT COUNT(*)
-            FROM game g
-            JOIN `match` m ON g.match_id = m.id
-            LEFT JOIN game_stats gs1 ON gs1.game_id = g.id AND gs1.team_id = m.team1_id
-            LEFT JOIN game_stats gs2 ON gs2.game_id = g.id AND gs2.team_id = m.team2_id
+            FROM GAME g
+            JOIN `MATCH` m ON g.match_id = m.id
+            LEFT JOIN GAME_STATS gs1 ON gs1.game_id = g.id AND gs1.team_id = m.team1_id
+            LEFT JOIN GAME_STATS gs2 ON gs2.game_id = g.id AND gs2.team_id = m.team2_id
             WHERE g.match_id = %s
             AND ((gs1.resultado IS NULL OR gs1.resultado = 0) AND (gs2.resultado IS NULL OR gs2.resultado = 0))
         ''', (match_id,))
@@ -304,7 +298,7 @@ def ajustar_games_match(conn, match_id):
 
         # Obtener información del match específico
         print(f"Obteniendo información del match {match_id}...")
-        cursor.execute("SELECT team1_id, team2_id, team1_result, team2_result FROM `match` WHERE id = %s", (match_id,))
+        cursor.execute("SELECT team1_id, team2_id, team1_result, team2_result FROM `MATCH` WHERE id = %s", (match_id,))
         match = cursor.fetchone()
         if not match:
             print(f"No se encontró el match con id {match_id}.")
@@ -317,14 +311,14 @@ def ajustar_games_match(conn, match_id):
 
         # Contar juegos ganados por cada equipo
         print(f"Contando juegos ganados para team1 ({team1_id}) y team2 ({team2_id})...")
-        cursor.execute('''SELECT COUNT(*) FROM game g
-                          JOIN game_stats gs ON g.id = gs.game_id
+        cursor.execute('''SELECT COUNT(*) FROM GAME g
+                          JOIN GAME_STATS gs ON g.id = gs.game_id
                           WHERE g.match_id = %s AND gs.team_id = %s AND gs.resultado = '1' ''', (match_id, team1_id))
         team1_games = cursor.fetchone()
         team1_games = team1_games[0] if team1_games else 0
         
-        cursor.execute('''SELECT COUNT(*) FROM game g
-                          JOIN game_stats gs ON g.id = gs.game_id
+        cursor.execute('''SELECT COUNT(*) FROM GAME g
+                          JOIN GAME_STATS gs ON g.id = gs.game_id
                           WHERE g.match_id = %s AND gs.team_id = %s AND gs.resultado = '1' ''', (match_id, team2_id))
         team2_games = cursor.fetchone()
         team2_games = team2_games[0] if team2_games else 0
@@ -340,9 +334,9 @@ def ajustar_games_match(conn, match_id):
             # Selecciona solo los game_id donde AMBOS equipos tienen resultado NULL o 0
             cursor.execute('''
                 SELECT g.id
-                FROM game g
-                JOIN game_stats gs1 ON g.id = gs1.game_id AND gs1.team_id = %s
-                JOIN game_stats gs2 ON g.id = gs2.game_id AND gs2.team_id = %s
+                FROM GAME g
+                JOIN GAME_STATS gs1 ON g.id = gs1.game_id AND gs1.team_id = %s
+                JOIN GAME_STATS gs2 ON g.id = gs2.game_id AND gs2.team_id = %s
                 WHERE g.match_id = %s
                 AND (gs1.resultado IS NULL OR gs1.resultado = '0')
                 AND (gs2.resultado IS NULL OR gs2.resultado = '0')
@@ -353,8 +347,8 @@ def ajustar_games_match(conn, match_id):
 
             if target_games:
                 cursor.execute(f'''
-                    UPDATE game_stats gs
-                    JOIN game g ON g.id = gs.game_id
+                    UPDATE GAME_STATS gs
+                    JOIN GAME g ON g.id = gs.game_id
                     SET gs.resultado = CASE 
                         WHEN gs.team_id = %s THEN '1' 
                         ELSE '0' 
@@ -370,9 +364,9 @@ def ajustar_games_match(conn, match_id):
 
             cursor.execute('''
                 SELECT g.id
-                FROM game g
-                JOIN game_stats gs1 ON g.id = gs1.game_id AND gs1.team_id = %s
-                JOIN game_stats gs2 ON g.id = gs2.game_id AND gs2.team_id = %s
+                FROM GAME g
+                JOIN GAME_STATS gs1 ON g.id = gs1.game_id AND gs1.team_id = %s
+                JOIN GAME_STATS gs2 ON g.id = gs2.game_id AND gs2.team_id = %s
                 WHERE g.match_id = %s
                 AND (gs1.resultado IS NULL OR gs1.resultado = '0')
                 AND (gs2.resultado IS NULL OR gs2.resultado = '0')
@@ -383,8 +377,8 @@ def ajustar_games_match(conn, match_id):
 
             if target_games:
                 cursor.execute(f'''
-                    UPDATE game_stats gs
-                    JOIN game g ON g.id = gs.game_id
+                    UPDATE GAME_STATS gs
+                    JOIN GAME g ON g.id = gs.game_id
                     SET gs.resultado = CASE 
                         WHEN gs.team_id = %s THEN '1' 
                         ELSE '0' 
@@ -426,7 +420,7 @@ def crear_match(connection, torneo_id, team_blue_id, team_red_id, game_details):
         dt = datetime.fromisoformat(game_details.start.replace('Z', '+00:00'))
         mysql_datetime = dt.strftime('%Y-%m-%d %H:%M:%S')
         # Buscar si ya existe el match
-        cursor.execute("SELECT team1_result, team2_result, strategy_count FROM `match` WHERE id = %s", (match_id,))
+        cursor.execute("SELECT team1_result, team2_result, strategy_count FROM `MATCH` WHERE id = %s", (match_id,))
         row = cursor.fetchone()
 
         if not row:
@@ -435,7 +429,7 @@ def crear_match(connection, torneo_id, team_blue_id, team_red_id, game_details):
             team2_result = 1 if winner_team_id == team_red_id else 0
             strategy_count = 1
             cursor.execute("""
-                INSERT INTO `match`
+                INSERT INTO `MATCH`
                 (id, tournamentId, strategy_type, strategy_count, team1_result, team2_result, team1_id, team2_id, start_time)
                 VALUES (%s, %s, 'bestOf', %s, %s, %s, %s, %s, %s)
             """, (match_id, torneo_id, strategy_count, team1_result, team2_result, team_blue_id, team_red_id, mysql_datetime))

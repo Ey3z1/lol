@@ -1,16 +1,7 @@
 import mysql.connector
 from datetime import datetime, timedelta
+from config_local import DB_CONFIG, API_KEY
 
-# Configuración de la base de datos
-DB_CONFIG = {
-    "host": "localhost",
-    "user": "root",
-    "password": "Rodriguez123",
-    "database": "league"
-}
-
-# API Key y Headers
-API_KEY = "0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z"
 HEADERS = {
     "x-api-key": API_KEY,
     "Origin": "https://lolesports.com"
@@ -87,9 +78,9 @@ def obtener_games_por_match(match_id):
                 '</div></div>'
             ) ORDER BY p.num_participant SEPARATOR ''
         )
-        FROM participant p
-        JOIN sports_player sp ON p.player_id = sp.id
-        JOIN champion c ON p.champion_id = c.id
+        FROM PARTICIPANT p
+        JOIN SPORTS_PLAYER sp ON p.player_id = sp.id
+        JOIN CHAMPION c ON p.champion_id = c.id
         WHERE p.game_id = g.id AND p.team_id = gs_blue.team_id
     ) AS blue_players,
     (
@@ -106,23 +97,23 @@ def obtener_games_por_match(match_id):
                 '</div></div>'
             ) ORDER BY p.num_participant SEPARATOR ''
         )
-        FROM participant p
-        JOIN sports_player sp ON p.player_id = sp.id
-        JOIN champion c ON p.champion_id = c.id
+        FROM PARTICIPANT p
+        JOIN SPORTS_PLAYER sp ON p.player_id = sp.id
+        JOIN CHAMPION c ON p.champion_id = c.id
         WHERE p.game_id = g.id AND p.team_id = gs_red.team_id
     ) AS red_players
-FROM game g
-LEFT JOIN game_stats gs_blue 
+FROM GAME g
+LEFT JOIN GAME_STATS gs_blue 
     ON g.id = gs_blue.game_id 
     AND gs_blue.side = 'BLUE'
-LEFT JOIN game_stats gs_red 
+LEFT JOIN GAME_STATS gs_red 
     ON g.id = gs_red.game_id 
     AND gs_red.side = 'RED'
-LEFT JOIN team t_blue 
+LEFT JOIN TEAM t_blue 
     ON gs_blue.team_id = t_blue.id
-LEFT JOIN team t_red 
+LEFT JOIN TEAM t_red 
     ON gs_red.team_id = t_red.id
-LEFT JOIN game_stats gs 
+LEFT JOIN GAME_STATS gs 
     ON g.id = gs.game_id
 WHERE g.match_id = %s
 GROUP BY g.id, g.game_num, t_blue.name, t_red.name
@@ -186,7 +177,7 @@ def obtener_campeon_por_id(champion_id):
         SELECT id, name, img
         FROM CHAMPION where id = %s
     """, (champion_id,))
-    champion = cursor.fetchone()
+    CHAMPION = cursor.fetchone()
     cursor.close()
     connection.close()
     return champion
@@ -220,9 +211,9 @@ def obtener_jugadores_por_equipos(team1_id, team2_id):
                 t.id AS team_id,
                 ROUND(AVG(p.kills), 1) AS avg_kills,
                 COUNT(p.id) AS total_games
-            FROM participant p
-            JOIN sports_player sp ON p.player_id = sp.id
-            JOIN team t ON p.team_id = t.id
+            FROM PARTICIPANT p
+            JOIN SPORTS_PLAYER sp ON p.player_id = sp.id
+            JOIN TEAM t ON p.team_id = t.id
             WHERE p.team_id IN (%s, %s)
             GROUP BY p.player_id, sp.name, sp.role, t.name, t.image
             ORDER BY 
@@ -271,10 +262,10 @@ def obtener_jugadores_por_equipos(team1_id, team2_id):
 #                         'resultado', m.team1_result
 #                     )
 #                 ) AS partidas
-#             FROM participant p
-#             JOIN sports_player sp ON p.player_id = sp.id
-#             JOIN team t ON p.team_id = t.id
-#             JOIN `match` m ON p.match_id = m.id
+#             FROM PARTICIPANT p
+#             JOIN SPORTS_PLAYER sp ON p.player_id = sp.id
+#             JOIN TEAM t ON p.team_id = t.id
+#             JOIN `MATCH` m ON p.match_id = m.id
 #             WHERE t.id IN (%s, %s)
 #             GROUP BY p.player_id
 #         """, (team1_id, team2_id))
@@ -303,9 +294,9 @@ def obtener_jugador_por_id(jugador_id):
             t.name AS team_name,
             t.id AS team_id,
             sp.role
-        FROM participant p
-        JOIN sports_player sp ON p.player_id = sp.id
-        JOIN team t ON p.team_id = t.id
+        FROM PARTICIPANT p
+        JOIN SPORTS_PLAYER sp ON p.player_id = sp.id
+        JOIN TEAM t ON p.team_id = t.id
         WHERE p.player_id = %s
     """, (jugador_id,))
     
@@ -330,16 +321,16 @@ def obtener_partidas_jugador(player_id, bans):
                     c.name AS champion_name,
                     t.name AS equipo_jugador,
                     t_oponente.name AS equipo_oponente
-                FROM participant p
-                JOIN game g ON p.game_id = g.id
-                JOIN game_stats gs ON g.id = gs.game_id AND p.team_id = gs.team_id
-                JOIN champion c ON p.champion_id = c.id
-                JOIN team t ON gs.team_id = t.id
-                JOIN game_stats gs_oponente 
+                FROM PARTICIPANT p
+                JOIN GAME g ON p.game_id = g.id
+                JOIN GAME_STATS gs ON g.id = gs.game_id AND p.team_id = gs.team_id
+                JOIN CHAMPION c ON p.champion_id = c.id
+                JOIN TEAM t ON gs.team_id = t.id
+                JOIN GAME_STATS gs_oponente 
                     ON g.id = gs_oponente.game_id 
                     AND gs_oponente.team_id != gs.team_id
-                JOIN team t_oponente ON gs_oponente.team_id = t_oponente.id
-                JOIN `match` m ON m.id = g.match_id
+                JOIN TEAM t_oponente ON gs_oponente.team_id = t_oponente.id
+                JOIN `MATCH` m ON m.id = g.match_id
                 JOIN tournament tt on tt.id = m.tournamentId
                 WHERE p.player_id = %s 
                     AND tt.activo = 1 
@@ -363,16 +354,16 @@ def obtener_partidas_jugador(player_id, bans):
                     c.name AS champion_name,
                     t.name AS equipo_jugador,
                     t_oponente.name AS equipo_oponente
-                FROM participant p
-                JOIN game g ON p.game_id = g.id
-                JOIN game_stats gs ON g.id = gs.game_id AND p.team_id = gs.team_id
-                JOIN champion c ON p.champion_id = c.id
-                JOIN team t ON gs.team_id = t.id
-                JOIN game_stats gs_oponente 
+                FROM PARTICIPANT p
+                JOIN GAME g ON p.game_id = g.id
+                JOIN GAME_STATS gs ON g.id = gs.game_id AND p.team_id = gs.team_id
+                JOIN CHAMPION c ON p.champion_id = c.id
+                JOIN TEAM t ON gs.team_id = t.id
+                JOIN GAME_STATS gs_oponente 
                     ON g.id = gs_oponente.game_id 
                     AND gs_oponente.team_id != gs.team_id
-                JOIN team t_oponente ON gs_oponente.team_id = t_oponente.id
-                JOIN `match` m ON m.id = g.match_id
+                JOIN TEAM t_oponente ON gs_oponente.team_id = t_oponente.id
+                JOIN `MATCH` m ON m.id = g.match_id
                 JOIN tournament tt on tt.id = m.tournamentId
                 WHERE p.player_id = %s AND tt.activo = 1
                 ORDER BY g.start_time DESC
