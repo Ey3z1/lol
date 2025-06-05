@@ -278,7 +278,7 @@ def importar_diferencial(connection, torneos_seleccionados):
                         game_id = game.get("id")
                         print(f"\n    🕹️ Game {game_num} (ID: {game_id})")
                         
-                        GAME_STATS = fetch_game_data(game_id)
+                        game_stats = fetch_game_data(game_id)
                         if not game_stats:
                             print(f"    ⚠ No se pudieron obtener datos para el game_id: {game_id}")
                             continue
@@ -393,7 +393,7 @@ def importar_diferencial(connection, torneos_seleccionados):
 
                         # Insertar participantes
                         print(f"\n    📥 Insertando {len(participants_data)} participantes...")
-                        for p_idx, PARTICIPANT in enumerate(participants_data):
+                        for p_idx, participant in enumerate(participants_data):
                             try:
                                 player_name = participant.get("summonerName")
                                 team_id = participant.get("teamId")

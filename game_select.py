@@ -177,7 +177,7 @@ def obtener_campeon_por_id(champion_id):
         SELECT id, name, img
         FROM CHAMPION where id = %s
     """, (champion_id,))
-    CHAMPION = cursor.fetchone()
+    champion = cursor.fetchone()
     cursor.close()
     connection.close()
     return champion
