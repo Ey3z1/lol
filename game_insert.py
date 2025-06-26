@@ -180,7 +180,7 @@ def obtener_torneos_de_bbdd():
         SELECT id, slug as name
         FROM TOURNAMENT
         WHERE slug LIKE %s
-        ORDER BY id DESC
+        ORDER BY activo DESC
     """, (f"%{current_year}%",))
     torneos = cursor.fetchall()
     cursor.close()
@@ -329,7 +329,7 @@ def ajustar_games_match(conn, match_id):
         # Ajustar resultados si hay juegos sin resultado
         if team1_games < team1_result:
             to_fix = team1_result - team1_games
-            print(f"Ajustando {to_fix} juegos para team1 ({team1_id})...")
+            
 
             # Selecciona solo los game_id donde AMBOS equipos tienen resultado NULL o 0
             cursor.execute('''
@@ -346,6 +346,9 @@ def ajustar_games_match(conn, match_id):
             target_games = [row[0] for row in cursor.fetchall()]
 
             if target_games:
+                print(f"Ajustando {to_fix} juegos para team1 ({team1_id})...")
+                print(f"Ajustando {target_games}")
+                
                 cursor.execute(f'''
                     UPDATE GAME_STATS gs
                     JOIN GAME g ON g.id = gs.game_id

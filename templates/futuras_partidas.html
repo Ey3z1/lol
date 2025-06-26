@@ -9,6 +9,29 @@
 
 </head>
 <body class="bg-dark text-light">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary" data-bs-theme="dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">🏆 LoL eStats</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="mainNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/seleccionar-torneos">📥 Descargas</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/torneo">📊 Torneos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/futuras_partidas">⏳ Próximos</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
     <div class="container py-4">
         <h2 class="text-center mb-4">⚔️ Configurar Líneas</h2>
         <form method="POST">
@@ -249,9 +272,10 @@
 
         // Mapa bidireccional de equivalencias
         const cuotaMap = new Map([
-            ['1.85', '1.85'], ['1.8', '1.9'], ['1.95', '1.75'],
+            ['1.8', '1.9'], ['1.95', '1.75'], ['1.85', '1.850'], 
             ['2.4', '1.5'], ['1.65', '2.1'], ['2', '1.7'],
-            ['1.6', '2.2'], ['1.55', '2.3'], ['1.4', '2.7']
+            ['1.6', '2.2'], ['1.55', '2.3'], ['1.4', '2.7'],
+            ['1.2', '4']
         ]);
 
         // Normalizar entrada (compatibilidad con coma y punto decimal)
@@ -270,6 +294,7 @@
             for(const [key, value] of cuotaMap.entries()) {
                 if(value === normalizado) return key;
             }
+            
             
             return normalizado; // Mantener valor si no hay coincidencia
         };
@@ -312,10 +337,18 @@
       function calcularLineasKills() {
             const team1 = document.getElementById('team1').selectedOptions[0].text;
             const team2 = document.getElementById('team2').selectedOptions[0].text;
-            
-            // Crear contenedor para las líneas de kills
-            const killsContainer = document.createElement('div');
-            killsContainer.className = 'mt-4 p-3 border rounded';
+
+            // Busca el div fijo o créalo si no existe
+            let killsContainer = document.getElementById('kills-lines-container');
+            if (!killsContainer) {
+                killsContainer = document.createElement('div');
+                killsContainer.id = 'kills-lines-container';
+                killsContainer.className = 'mt-4 p-3 border rounded';
+                // Inserta el div después del formulario principal
+                document.querySelector('form').after(killsContainer);
+            }
+
+            // Actualiza el contenido del div
             killsContainer.innerHTML = `
                 <h4 class="text-center mb-3">⚔️ Líneas de Kills</h4>
                 <div class="row g-3">
@@ -349,10 +382,17 @@
                 </div>
             `;
 
-            // Insertar después del formulario principal
-            document.querySelector('form').after(killsContainer);
+            // Muestra el div
+            killsContainer.style.display = 'block';
         }
 
+        // Para ocultar el div cuando el usuario selecciona otra cosa:
+        function ocultarLineasKills() {
+            const killsContainer = document.getElementById('kills-lines-container');
+            if (killsContainer) {
+                killsContainer.style.display = 'none';
+            }
+        }
         $('.select2-bans').select2({
             placeholder: "Introduce los bans...",
             allowClear: true, // Permite limpiar la selección

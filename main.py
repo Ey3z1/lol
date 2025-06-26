@@ -39,15 +39,19 @@ def seleccionar_torneos():
     if request.method == 'POST':
         # Obtener los IDs de torneos seleccionados
         torneos_seleccionados = request.form.getlist('tournamentes')
+        modo = request.form.get('modo_importacion')
+
+        importar_con_leaguepedia = modo == 'leaguepedia'
         
         # Aquí integras tu código de descarga
         try:
             connection = mysql.connector.connect(**DB_CONFIG)
-            importar_diferencial(connection, torneos_seleccionados)
+            importar_diferencial(connection, torneos_seleccionados, importar_con_leaguepedia=importar_con_leaguepedia)
             mensaje = "✅ Descarga completada para torneos seleccionados"
         except Exception as e:
             mensaje = f"❌ Error: {str(e)}"
-        
+            print(mensaje)
+            
         return render_template('seleccion_torneos.html', 
                             torneos=obtener_torneos_de_bbdd(),
                             mensaje=mensaje)
@@ -99,7 +103,7 @@ def calcular_linea(avg_kills, probabilidad):
     ajuste = (0.5 - (1-probabilidad)) * 2 * max_ajuste
     linea = avg_kills + ajuste
     entero = round(linea)
-    linea_final = entero + 0.5  # Forzar formato X.5
+    linea_final = entero - 0.5  # Forzar formato X.5
     return max(linea_final, 0.5)  # Mínimo 0.5
 
 @app.route('/futuras_partidas', methods=['GET', 'POST'])

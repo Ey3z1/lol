@@ -14,13 +14,12 @@ def procesar_torneo_leaguepedia(connection, torneo_id, nombre_torneo):
         # Paso 1: Obtener máximo índice existente
         max_index = obtener_max_index_leaguepedia(connection, nombre_torneo)
         print(f"🔝 Último índice procesado: {max_index}")
-        
         # Paso 2: Obtener juegos desde Leaguepedia
         games = leaguepedia_parser.get_games(nombre_torneo)
         print(f"🎮 Juegos disponibles en API: {len(games)}")
         
         # Paso 3: Filtrar juegos nuevos
-        nuevos_juegos = [(i, g) for i, g in enumerate(games) if i > max_index]
+        nuevos_juegos = [(i, g) for i, g in enumerate(games) if i > max_index or max_index == 0]
         print(f"🆕 Juegos por procesar: {len(nuevos_juegos)}")
         
         # Paso 4: Procesar solo juegos nuevos
@@ -136,7 +135,7 @@ def get_team_name_and_code_from_leaguepedia_team(team):
     return team_name
 
 def get_or_create_team_leaguepedia(connection, team_name):
-    cursor = connection.cursor()
+    cursor = connection.cursor(buffered=True)
     try:
         # Buscar por nombre
         cursor.execute("SELECT id FROM TEAM WHERE name LIKE %s", ('%' + team_name + '%',))        
@@ -216,7 +215,7 @@ def obtener_nombre_equipo_por_jugadores(players):
 
 def get_or_create_team_by_name(connection, team_name):
     """Busca o crea un equipo por su nombre y devuelve su ID"""
-    cursor = connection.cursor()
+    cursor = connection.cursor(buffered=True)
     try:
         # Buscar equipo existente
         cursor.execute("SELECT id FROM TEAM WHERE name = %s", (team_name,))

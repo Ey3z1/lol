@@ -1,44 +1,217 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>Descargar Games</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Descargar Torneos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
-<body>
-    <!-- templates/seleccion_torneos.html -->
-<form method="POST">
-    <div class="card">
-      <div class="card-header">
-        <h4>Selecciona los torneos a descargar</h4>
-        {% if mensaje %}
-          <div class="alert alert-info">{{ mensaje }}</div>
-        {% endif %}
-      </div>
-      
-      <div class="card-body">
-        <div class="row">
-          {% for torneo in torneos %}
-            <div class="col-md-6 mb-3">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" 
-                     name="tournamentes" 
-                     value="{{ torneo.id }}" 
-                     id="torneo_{{ torneo.id }}">
-                <label class="form-check-label" for="torneo_{{ torneo.id }}">
-                  {{ torneo.name }}
-                </label>
-              </div>
+<body class="bg-dark text-light">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary" data-bs-theme="dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">🏆 LoL eStats</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="mainNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/seleccionar-torneos">📥 Descargas</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/torneo">📊 Torneos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/futuras_partidas">⏳ Próximos</a>
+                    </li>
+                </ul>
             </div>
-          {% endfor %}
         </div>
-      </div>
-      
-      <div class="card-footer">
-        <button type="submit" class="btn btn-primary">
-          Descargar torneos seleccionados
-        </button>
-      </div>
+    </nav>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-9 col-xl-8">
+                <form method="POST" class="needs-validation" novalidate>
+                    <!-- Tarjeta principal con fondo semi-transparente -->
+                    <div class="card border-0 bg-transparent">
+                        <!-- Header con degradado -->
+                        <div class="card-header bg-gradient-primary border-bottom-0 py-4">
+                            <h3 class="mb-0 text-light">
+                                <i class="fas fa-trophy me-2"></i>
+                                Selección de Torneos
+                            </h3>
+                        </div>
+                        
+                        <!-- Mensaje de alerta integrado -->
+                        {% if mensaje %}
+                        <div class="alert alert-dark alert-dismissible fade show mx-4 mt-3" role="alert">
+                            <i class="fas fa-info-circle me-2"></i>
+                            {{ mensaje }}
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Cuerpo con fondo oscuro semi-transparente -->
+                        <div class="card-body bg-dark-soft p-4 rounded-4">
+                            <!-- Sección de Modo Importación -->
+                            <div class="import-mode-section mb-5">
+                                <h5 class="text-light mb-4 border-bottom pb-2 border-secondary">
+                                    <i class="fas fa-download me-2"></i>
+                                    Configurar Método de Importación
+                                </h5>
+                                
+                                <div class="d-flex flex-column flex-md-row gap-3">
+                                    <div class="form-check form-check-dark flex-fill">
+                                        <input class="form-check-input" 
+                                               type="radio" 
+                                               name="modo_importacion" 
+                                               id="leaguepedia" 
+                                               value="leaguepedia" 
+                                               checked>
+                                        <label class="form-check-label text-light" for="leaguepedia">
+                                            <i class="fab fa-wikipedia-w me-2"></i>
+                                            Importación via Leaguepedia
+                                        </label>
+                                    </div>
+                                    
+                                    <div class="form-check form-check-dark flex-fill">
+                                        <input class="form-check-input" 
+                                               type="radio" 
+                                               name="modo_importacion" 
+                                               id="lolesports" 
+                                               value="lolesports">
+                                        <label class="form-check-label text-light" for="lolesports">
+                                            <i class="fas fa-cloud-download-alt me-2"></i>
+                                            Importación via API LoLEsports
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Listado de Torneos -->
+                            <div class="tournament-section">
+                                <h5 class="text-light mb-4 border-bottom pb-2 border-secondary">
+                                    <i class="fas fa-list-ol me-2"></i>
+                                    Torneos Disponibles
+                                </h5>
+                                
+                                <!-- Controles de selección -->
+                                <div class="d-flex flex-column flex-md-row justify-content-md-between align-items-md-center mb-4">
+                                    <span class="text-muted mb-2 mb-md-0">
+                                        <i class="fas fa-database me-1"></i>
+                                        Total de torneos: {{ torneos|length }}
+                                    </span>
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-outline-light btn-sm" id="selectAll">
+                                            <i class="fas fa-check-circle me-1"></i>
+                                            Seleccionar Todos
+                                        </button>
+                                        <button type="button" class="btn btn-outline-light btn-sm" id="selectNone">
+                                            <i class="fas fa-times-circle me-1"></i>
+                                            Limpiar Selección
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Grid de Torneos -->
+                                <div class="row g-3">
+                                    {% for torneo in torneos %}
+                                    <div class="col-12 col-md-6">
+                                        <div class="tournament-card bg-dark border border-secondary rounded-3 p-3 transition-all">
+                                            <div class="form-check">
+                                                <input class="form-check-input tournament-checkbox" 
+                                                       type="checkbox" 
+                                                       name="tournamentes" 
+                                                       value="{{ torneo.id }}" 
+                                                       id="torneo_{{ torneo.id }}">
+                                                <label class="form-check-label text-light w-100" 
+                                                       for="torneo_{{ torneo.id }}">
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="flex-grow-1">
+                                                            <div class="tournament-name fw-medium">
+                                                                {{ torneo.name }}
+                                                            </div>
+                                                            {% if torneo.fecha %}
+                                                            <div class="tournament-date text-muted small mt-1">
+                                                                <i class="far fa-calendar-alt me-1"></i>
+                                                                {{ torneo.fecha }}
+                                                            </div>
+                                                            {% endif %}
+                                                        </div>
+                                                        <i class="fas fa-chevron-right ms-2 text-secondary"></i>
+                                                    </div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Footer con estadísticas -->
+                        <div class="card-footer bg-dark border-top-0 pt-4 pb-3">
+                            <div class="d-flex flex-column flex-md-row justify-content-md-between align-items-md-center">
+                                <div class="text-muted mb-2 mb-md-0">
+                                    <i class="fas fa-chart-pie me-1"></i>
+                                    <span id="selectedCount">0</span> seleccionados de {{ torneos|length }}
+                                </div>
+                                
+                                <div class="d-flex gap-2">
+                                    <button type="reset" class="btn btn-outline-light">
+                                        <i class="fas fa-undo me-1"></i>
+                                        Reiniciar
+                                    </button>
+                                    <button type="submit" class="btn btn-primary px-4">
+                                        <i class="fas fa-cloud-download-alt me-1"></i>
+                                        Iniciar Descarga
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-  </form>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const selectAllBtn = document.getElementById('selectAll');
+            const selectNoneBtn = document.getElementById('selectNone');
+            const checkboxes = document.querySelectorAll('.tournament-checkbox');
+            const selectedCount = document.getElementById('selectedCount');
+
+            const updateUI = () => {
+                const checked = document.querySelectorAll('.tournament-checkbox:checked').length;
+                selectedCount.textContent = checked;
+                document.querySelectorAll('.tournament-card').forEach(card => {
+                    card.classList.toggle('selected', card.querySelector('.tournament-checkbox').checked);
+                });
+            };
+
+            selectAllBtn.addEventListener('click', () => {
+                checkboxes.forEach(checkbox => checkbox.checked = true);
+                updateUI();
+            });
+
+            selectNoneBtn.addEventListener('click', () => {
+                checkboxes.forEach(checkbox => checkbox.checked = false);
+                updateUI();
+            });
+
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', updateUI);
+            });
+
+            updateUI();
+        });
+    </script>
 </body>
 </html>

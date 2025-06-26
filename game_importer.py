@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from game_importer_leaguepedia import procesar_torneo_leaguepedia
 from game_insert import *
 from config_local import API_KEY
+from mapeo_torneos import MAPEO_TORNEOS
 
 
 HEADERS = {
@@ -95,31 +96,14 @@ def get_team_code_from_participant(participant):
         return name.split()[0].upper()
     return None
 
-def importar_diferencial(connection, torneos_seleccionados):
+def importar_diferencial(connection, torneos_seleccionados, importar_con_leaguepedia=False):
     cursor = connection.cursor(dictionary=True)
-     # Mapeo de IDs de torneos Lolesports a nombres de torneos en Leaguepedia
-    mapeo_torneos = {
-        '113503620829714518': [
-            #'LPL/2025 Season/Split 2 Placements',
-            #'LPL/2025 Season/Split 2',
-            'LPL/2025 Season/Split 2 Playoffs'
-        ],
-        '113481048385904309': [
-            'LPL/2025 Season/Split 1',
-            'LPL/2025 Season/Split 1 Playoffs'
-        ]
-    }
-    
     for torneo_id in torneos_seleccionados:
-        if torneo_id in mapeo_torneos:
+        if importar_con_leaguepedia and torneo_id in MAPEO_TORNEOS:
             try:
-                # Iteramos sobre todos los nombres asociados al ID
-                for nombre_torneo in mapeo_torneos[torneo_id]:
+                for nombre_torneo in MAPEO_TORNEOS[torneo_id]:
                     print(f"\n🏆 Procesando torneo {torneo_id} con Leaguepedia: {nombre_torneo}")
-                    
-                    # Procesamos cada variante del torneo
                     procesar_torneo_leaguepedia(connection, torneo_id, nombre_torneo)
-                
             except Exception as e:
                 print(f"❌ Error al procesar torneo {torneo_id}: {str(e)}")
                 continue
