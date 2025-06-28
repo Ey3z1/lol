@@ -10,6 +10,6 @@ MAPEO_TORNEOS = {
         'LCK/2025 Season/Road to MSI'
     ],
     '113470835034591734': [
-        '2025_Mid-Season_Invitational'
+        '2025 Mid-Season Invitational'
     ]
 }
