@@ -375,6 +375,62 @@ def obtener_partidas_jugador(player_id, bans):
         cursor.close()
         connection.close()
 
+def obtener_partidas_kills_equipo(team_id):
+    """
+    Obtiene las estadísticas de kills de un equipo específico en todas sus partidas.
+    
+    Args:
+        team_id (int): ID del equipo a consultar
+        
+    Returns:
+        list: Lista de diccionarios con las estadísticas de cada partida
+    """
+    connection = None
+    cursor = None
+    
+    try:
+        connection = mysql.connector.connect(**DB_CONFIG)
+        cursor = connection.cursor(dictionary=True)
+        
+        query = """
+            SELECT
+                v.game_id,
+                v.game_num,
+                v.start_time AS fecha,
+                v.equipo_id,
+                v.equipo_nombre,
+                v.equipo_img,
+                v.team_code,
+                v.rival_id,
+                v.rival_nombre,
+                v.rival_code,
+                v.rival_img,
+                v.kills_equipo,
+                v.kills_rival,
+                v.diferencia_kills,
+                CASE WHEN v.resultado = 1 THEN TRUE 
+                     WHEN v.resultado = 0 THEN FALSE 
+                     ELSE NULL END AS ganado_kills
+            FROM vista_kills_equipos v
+            WHERE v.equipo_id = %s
+            ORDER BY v.game_id, v.start_time
+        """
+        
+        cursor.execute(query, (team_id,))
+        results = cursor.fetchall()
+        
+        return results
+    
+    except mysql.connector.Error as error:
+        print(f"Error al obtener partidas de kills del equipo: {error}")
+        return []
+    
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
 def obtener_max_index_leaguepedia(connection, torneo_id):
     """Retorna el máximo index_leaguepedia registrado para el torneo"""
     cursor = connection.cursor()

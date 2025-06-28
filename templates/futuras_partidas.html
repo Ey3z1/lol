@@ -56,6 +56,7 @@
                         <input type="number" step="0.01" 
                                class="form-control mb-3" 
                                name="cuota1" 
+                               id="cuota1"
                                placeholder="Cuota Equipo Azul" 
                                value="{{ cuota1 if cuota1 }}" 
                                required>
@@ -81,6 +82,7 @@
                         <input type="number" step="0.01" 
                                class="form-control mb-3" 
                                name="cuota2" 
+                               id="cuota2"
                                placeholder="Cuota Equipo Rojo" 
                                value="{{ cuota2 if cuota2 }}" 
                                required>
@@ -253,7 +255,7 @@
                 class="btn btn-lg btn-warning" 
                 formaction="/ev_calculo" 
                 formtarget="_blank">
-            🧮 Calcular EV
+            🧮 Calcular EV Kills
         </button>
     </div>
         {% endif %}
@@ -335,8 +337,10 @@
       }
 
       function calcularLineasKills() {
-            const team1 = document.getElementById('team1').selectedOptions[0].text;
-            const team2 = document.getElementById('team2').selectedOptions[0].text;
+            const team1 = document.getElementById('team1').value;
+            const team2 = document.getElementById('team2').value;
+            const cuota1 = document.getElementById('cuota1').value;
+            const cuota2 = document.getElementById('cuota2').value;
 
             // Busca el div fijo o créalo si no existe
             let killsContainer = document.getElementById('kills-lines-container');
@@ -350,37 +354,34 @@
 
             // Actualiza el contenido del div
             killsContainer.innerHTML = `
-                <h4 class="text-center mb-3">⚔️ Líneas de Kills</h4>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="input-group">
-                            <span class="input-group-text bg-primary text-white">${team1}</span>
-                            <input type="number" step="0.5" 
-                                class="form-control" 
-                                name="linea_kills_team1" 
-                                value="10.5"
-                                required>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="input-group">
-                            <span class="input-group-text bg-danger text-white">${team2}</span>
-                            <input type="number" step="0.5" 
-                                class="form-control" 
-                                name="linea_kills_team2" 
-                                value="-10.5"
-                                required>
-                        </div>
+           <form action="/procesar_kills" method="POST" target="_blank" class="mt-4 p-3 border rounded">
+            <input type="hidden" name="cuota1" id="hidden-cuota1" value="${cuota1}">
+            <input type="hidden" name="cuota2" id="hidden-cuota2" value="${cuota2}">
+            <input type="hidden" name="team1" id="hidden-team1" value="${team1}">
+            <input type="hidden" name="team2" id="hidden-team2" value="${team2}">
+
+            <h4 class="text-center mb-3">⚔️ Líneas de Kills</h4>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text bg-primary text-white">${team1}</span>
+                        <input type="number" step="0.5" class="form-control" name="linea_kills_team1" value="10.5" required>
                     </div>
                 </div>
-                <div class="text-center mt-3">
-                    <button type="submit" 
-                            class="btn btn-lg btn-warning"
-                            formaction="/procesar-kills">
-                        💥 Guardar Líneas
-                    </button>
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text bg-danger text-white">${team2}</span>
+                        <input type="number" step="0.5" class="form-control" name="linea_kills_team2" value="-10.5" required>
+                    </div>
                 </div>
-            `;
+            </div>
+            <div class="text-center mt-3">
+                <button type="submit" class="btn btn-lg btn-warning">
+                    💥 Calcular EV Líneas
+                </button>
+            </div>
+        </form>
+    `;
 
             // Muestra el div
             killsContainer.style.display = 'block';

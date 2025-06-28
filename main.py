@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import time
 import requests
 from game_importer import importar_diferencial, obtener_torneos_de_bbdd, obtener_torneos_con_matches_de_bbdd  # Importación clave
-from game_select import obtener_games_por_match,obtener_matches_por_torneo,obtener_torneo_por_id, obtener_campeon_por_id,obtener_equipos_con_imagen,obtener_champions_con_imagen, obtener_jugadores_por_equipos, obtener_jugador_por_id, obtener_partidas_jugador  # Importación clave
+from game_select import obtener_games_por_match,obtener_matches_por_torneo, obtener_partidas_kills_equipo,obtener_torneo_por_id, obtener_campeon_por_id,obtener_equipos_con_imagen,obtener_champions_con_imagen, obtener_jugadores_por_equipos, obtener_jugador_por_id, obtener_partidas_jugador  # Importación clave
 import math
 from datetime import datetime
 import ast
@@ -274,6 +274,138 @@ def ev_calculo():
         team2_id = team2_id,
         prob_team1=round(prob_team1*100, 2),
         prob_team2=round(prob_team2*100, 2)
+    )
+
+@app.route('/procesar_kills', methods=['POST'])
+def procesar_kills():
+    """
+    Procesa el cálculo de Expected Value para líneas de kills de equipos
+    """
+    data = request.form
+    
+    # Obtener datos del formulario
+    team1_id = request.form.get('team1')
+    team2_id = request.form.get('team2')
+    
+    try:
+        cuota1 = float(request.form.get('cuota1')) if request.form.get('cuota1') else None
+        cuota2 = float(request.form.get('cuota2')) if request.form.get('cuota2') else None
+    except ValueError:
+        cuota1 = cuota2 = None
+    linea_kills_team1 = float(data.get('linea_kills_team1'))
+    linea_kills_team2 = float(data.get('linea_kills_team2'))
+    
+    
+    # Calcular probabilidades implícitas de victoria
+    prob_team1_win = (1 / cuota1) / ((1 / cuota1) + (1 / cuota2))
+    prob_team2_win = 1 - prob_team1_win
+    
+    # Obtener partidas históricas de ambos equipos
+    partidas_team1 = obtener_partidas_kills_equipo(team1_id)
+    
+    partidas_team2 = obtener_partidas_kills_equipo(team2_id)
+    
+    equipos_stats = []
+    
+    # Procesar Team 1
+    if partidas_team1:
+        team1_name = partidas_team1[0]['equipo_nombre']
+        team1_img = partidas_team1[0]['equipo_img']
+        # Separar partidas en victorias y derrotas
+        victorias_t1 = [p for p in partidas_team1 if p['ganado_kills']]
+        derrotas_t1 = [p for p in partidas_team1 if not p['ganado_kills']]
+        
+        # Calcular estadísticas para superar la línea
+        supero_victorias_t1 = sum(1 for p in victorias_t1 if p['diferencia_kills'] >= linea_kills_team1)
+        supero_derrotas_t1 = sum(1 for p in derrotas_t1 if p['diferencia_kills'] >= linea_kills_team1)
+        
+        # Probabilidades condicionales
+        prob_over_win_t1 = supero_victorias_t1 / len(victorias_t1) if len(victorias_t1) > 0 else 0
+        prob_over_lose_t1 = supero_derrotas_t1 / len(derrotas_t1) if len(derrotas_t1) > 0 else 0
+        
+        # Probabilidad total de superar la línea
+        prob_over_total_t1 = (prob_over_win_t1 * prob_team1_win) + (prob_over_lose_t1 * prob_team2_win)
+        prob_under_total_t1 = 1 - prob_over_total_t1
+        
+        # Calcular porcentajes para mostrar
+        prob_superar_victorias_t1 = (supero_victorias_t1 / len(victorias_t1) * 100) if len(victorias_t1) > 0 else 0
+        prob_superar_derrotas_t1 = (supero_derrotas_t1 / len(derrotas_t1) * 100) if len(derrotas_t1) > 0 else 0
+        prob_superar_total_t1 = ((supero_victorias_t1 + supero_derrotas_t1) / len(partidas_team1) * 100) if len(partidas_team1) > 0 else 0
+        
+        equipos_stats.append({
+            'team_id': team1_id,
+            'team_name': team1_name,
+            'team_img': team1_img,
+            'linea': linea_kills_team1,
+            'prob_over': round(prob_over_total_t1 * 100, 2),
+            'prob_under': round(prob_under_total_t1 * 100, 2),
+            'supero_victorias': supero_victorias_t1,
+            'supero_derrotas': supero_derrotas_t1,
+            'total_victorias': len(victorias_t1),
+            'total_derrotas': len(derrotas_t1),
+            'total_partidas': len(partidas_team1),
+            'prob_superar_victorias': round(prob_superar_victorias_t1, 2),
+            'prob_superar_derrotas': round(prob_superar_derrotas_t1, 2),
+            'prob_superar_total': round(prob_superar_total_t1, 2),
+            'partidas': partidas_team1
+        })
+    
+    # Procesar Team 2 
+    if partidas_team2:
+        team2_name = partidas_team2[0]['equipo_nombre']
+        team2_img = partidas_team2[0]['equipo_img']
+        # Separar partidas en victorias y derrotas
+        victorias_t2 = [p for p in partidas_team2 if p['ganado_kills']]
+        derrotas_t2 = [p for p in partidas_team2 if not p['ganado_kills']]
+        
+        # Calcular estadísticas para superar la línea
+        supero_victorias_t2 = sum(1 for p in victorias_t2 if p['diferencia_kills'] <= linea_kills_team2)
+        supero_derrotas_t2 = sum(1 for p in derrotas_t2 if p['diferencia_kills'] <= linea_kills_team2)
+        
+        # Probabilidades condicionales
+        prob_over_win_t2 = supero_victorias_t2 / len(victorias_t2) if len(victorias_t2) > 0 else 0
+        prob_over_lose_t2 = supero_derrotas_t2 / len(derrotas_t2) if len(derrotas_t2) > 0 else 0
+        
+        # Probabilidad total de superar la línea
+        prob_over_total_t2 = (prob_over_win_t2 * prob_team2_win) + (prob_over_lose_t2 * prob_team1_win)
+        prob_under_total_t2 = 1 - prob_over_total_t2
+        
+        # Calcular porcentajes para mostrar
+        prob_superar_victorias_t2 = (supero_victorias_t2 / len(victorias_t2) * 100) if len(victorias_t2) > 0 else 0
+        prob_superar_derrotas_t2 = (supero_derrotas_t2 / len(derrotas_t2) * 100) if len(derrotas_t2) > 0 else 0
+        prob_superar_total_t2 = ((supero_victorias_t2 + supero_derrotas_t2) / len(partidas_team2) * 100) if len(partidas_team2) > 0 else 0
+        
+        equipos_stats.append({
+            'team_id': team2_id,
+            'team_name': team2_name,
+            'team_img': team2_img,
+            'linea': abs(linea_kills_team2),  # Usar valor absoluto para la línea
+            'prob_over': round(prob_over_total_t2 * 100, 2),
+            'prob_under': round(prob_under_total_t2 * 100, 2),
+            'supero_victorias': supero_victorias_t2,
+            'supero_derrotas': supero_derrotas_t2,
+            'total_victorias': len(victorias_t2),
+            'total_derrotas': len(derrotas_t2),
+            'total_partidas': len(partidas_team2),
+            'prob_superar_victorias': round(prob_superar_victorias_t2, 2),
+            'prob_superar_derrotas': round(prob_superar_derrotas_t2, 2),
+            'prob_superar_total': round(prob_superar_total_t2, 2),
+            'partidas': partidas_team2
+        })
+    
+    return render_template(
+        'kills_calculo.html',  # Nuevo template para mostrar resultados de kills
+        equipos_stats=equipos_stats,
+        team1_name=team1_name,
+        team2_name=team2_name,
+        team1_img=team1_img,
+        team2_img=team2_img,
+        team1_id=team1_id,
+        team2_id=team2_id,
+        prob_team1=round(prob_team1_win * 100, 2),
+        prob_team2=round(prob_team2_win * 100, 2),
+        linea_team1=linea_kills_team1,
+        linea_team2=abs(linea_kills_team2)
     )
 
 

@@ -196,7 +196,7 @@ def obtener_torneos_con_matches_de_bbdd():
         FROM TOURNAMENT t
         JOIN MATCHES m ON t.id = m.tournament_id
         WHERE t.slug LIKE %s
-        ORDER BY t.id DESC
+        ORDER BY t.activo desc, t.id DESC
     """, (f"%{current_year}%",))
     torneos = cursor.fetchall()
     cursor.close()
