@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 import leaguepedia_parser
-from game_insert import  get_or_create_player, get_champion_id, insert_game_stats, insert_participant, insert_game, crear_match
+from game_insert import  add_team_to_team_tournament, get_or_create_player, get_champion_id, insert_game_stats, insert_participant, insert_game, crear_match
 from datetime import timedelta
 from ratelimit import limits, sleep_and_retry
 from game_select import obtener_max_index_leaguepedia
@@ -49,11 +49,13 @@ def procesar_juego_leaguepedia(connection, game_details, torneo_id, gamepedia_sl
         # Para el equipo azul
         blue_team_name = get_team_name_and_code_from_leaguepedia_team(game_details.teams.BLUE)
         team_blue_id = get_or_create_team_leaguepedia(connection, blue_team_name)
+        add_team_to_team_tournament(connection, team_blue_id, torneo_id)
 
         # Para el equipo rojo
         red_team_name = get_team_name_and_code_from_leaguepedia_team(game_details.teams.RED)
         team_red_id = get_or_create_team_leaguepedia(connection, red_team_name)
-        
+        add_team_to_team_tournament(connection, team_red_id, torneo_id)
+
         # Crear/actualizar match (BO5)
         match_id = crear_match(
             connection,

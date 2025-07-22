@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Stats – {{ torneo.name if torneo else 'Torneo' }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <style>
+        html, body { height: 100%; width: 100%; }
+        body { min-width: 100vw; background: #191c22 !important;}
+        .stretch-table {
+            width: 100vw !important;
+            min-width: 1400px;
+            max-width: 100vw !important;
+            margin-left: -24px;
+        }
+        .table-container {
+            width: 100vw;
+            max-width: 100vw;
+            overflow-x: auto;
+        }
+        .tier-badge{
+            display:inline-block; min-width:2em;
+            border-radius:12px;
+            font-weight:600; font-size:1em;
+            padding:2px 12px; margin-left:2px;
+            background: #f5d142; color: #333;
+        }
+        .team-logo{
+            width:36px; height:36px; object-fit:contain; border-radius:7px; margin-right:10px;
+        }
+        .bg-header { background-color: #2b3755 !important; }
+        .sub-row { background: #222629 !important; font-size: 0.93em;}
+        .stats-over    { font-weight: bold;}
+        .stats-under   { font-weight: bold;}
+        .stats-pct     { color: #35c75a !important; font-weight: 500;}
+        th, td { vertical-align: middle !important; text-align: center; }
+        .table-dark th, .table-dark td { border-color: #345; }
+    </style>
+</head>
+<body class="bg-dark text-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary">
+        <div class="container">
+            <a class="navbar-brand" href="/">🏆 LoL eStats</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="mainNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item"><a class="nav-link" href="/seleccionar-torneos">📥 Descargas</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/torneo">📊 Torneos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/futuras_partidas">⏳ Próximos</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid py-4">
+        <div class="text-center mb-4">
+            <h2 class="fw-bold"><i class="fa-solid fa-chart-line me-2"></i>Stats de {{ torneo.name }}</h2>
+            <p class="text-secondary mb-0">Over/Under de objetivos y porcentajes por equipo</p>
+        </div>
+        <div class="table-container">
+        <table class="table table-dark align-middle table-bordered mb-0 stretch-table">
+            <thead class="bg-header">
+                <tr>
+                    <th rowspan="2">Equipo</th>
+                    <th rowspan="2">Tier</th>
+                    <th colspan="2">Dragones 4.5</th>
+                    <th colspan="4">Torres</th>
+                    <th colspan="2">Barones 1.5</th>
+                    <th colspan="10">Kills thresholds</th>
+                </tr>
+                <tr>
+                    <th>Under</th><th>Over</th>
+                    <th>U 11.5</th><th>O 11.5</th>
+                    <th>U 12.5</th><th>O 12.5</th>
+                    <th>Under</th><th>Over</th>
+                    {% for th in [26.5,27.5,28.5,29.5,30.5] %}
+                        <th>U {{ th }}</th>
+                        <th>O {{ th }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in stats_equipos %}
+                {% set total_games = (row.dragons_under_eq_4_5 or 0) + (row.dragons_over_4_5 or 0) %}
+                <tr>
+                    <!-- Equipo + logo -->
+                    <td>
+                        {% if row.team_image.startswith('http') %}
+                            <img src="{{ row.team_image }}" class="team-logo" alt="{{ row.team_name }}">
+                        {% else %}
+                            <img src="{{ url_for('static', filename=row.team_image) }}" class="team-logo" alt="{{ row.team_name }}">
+                        {% endif %}
+                        <span class="fw-semibold">{{ row.team_name }}</span>
+                    </td>
+                    <td>
+                        <span class="badge tier-badge tier-{{ row.tier }}">
+                            Tier {{ row.tier }}
+                        </span>
+                    </td>
+                    <!-- Dragones -->
+                    <td class="stats-under">{{ row.dragons_under_eq_4_5 }}</td>
+                    <td class="stats-over">{{ row.dragons_over_4_5 }}</td>
+                    <!-- Torres 11.5 -->
+                    <td class="stats-under">{{ row.towers_under_eq_11_5 }}</td>
+                    <td class="stats-over">{{ row.towers_over_11_5 }}</td>
+                    <!-- Torres 12.5 -->
+                    <td class="stats-under">{{ row.towers_under_eq_12_5 }}</td>
+                    <td class="stats-over">{{ row.towers_over_12_5 }}</td>
+                    <!-- Barones -->
+                    <td class="stats-under">{{ row.barons_under_eq_1_5 }}</td>
+                    <td class="stats-over">{{ row.barons_over_1_5 }}</td>
+                    <!-- Kills -->
+                    {% for th in [26.5,27.5,28.5,29.5,30.5] %}
+                        {% set over = row['kills_over_' ~ th|string|replace('.', '_')] %}
+                        {% set under = row['kills_under_eq_' ~ th|string|replace('.', '_')] %}
+                        <td class="stats-under">{{ under }}</td>
+                        <td class="stats-over">{{ over }}</td>
+                    {% endfor %}
+                </tr>
+                <!-- Subfila de porcentajes -->
+                <tr class="sub-row">
+                    <td></td>
+                    <td></td>
+                    <td colspan="2" class="stats-pct">
+                        {% set pct_u = (row.dragons_under_eq_4_5 or 0)/total_games*100 if total_games else 0 %}
+                        {% set pct_o = (row.dragons_over_4_5 or 0)/total_games*100 if total_games else 0 %}
+                        Under: {{ "%.1f"|format(pct_u) }}% &nbsp; Over: {{ "%.1f"|format(pct_o) }}%
+                    </td>
+                    {% set total = (row.towers_under_eq_11_5 or 0)+(row.towers_over_11_5 or 0) %}
+                    <td colspan="2" class="stats-pct">
+                        Under: {{ "%.1f"|format((row.towers_under_eq_11_5 or 0)/total*100 if total else 0) }}% &nbsp;
+                        Over: {{ "%.1f"|format((row.towers_over_11_5 or 0)/total*100 if total else 0) }}%
+                    </td>
+                    {% set total = (row.towers_under_eq_12_5 or 0)+(row.towers_over_12_5 or 0) %}
+                    <td colspan="2" class="stats-pct">
+                        Under: {{ "%.1f"|format((row.towers_under_eq_12_5 or 0)/total*100 if total else 0) }}% &nbsp;
+                        Over: {{ "%.1f"|format((row.towers_over_12_5 or 0)/total*100 if total else 0) }}%
+                    </td>
+                    {% set total = (row.barons_under_eq_1_5 or 0)+(row.barons_over_1_5 or 0) %}
+                    <td colspan="2" class="stats-pct">
+                        Under: {{ "%.1f"|format((row.barons_under_eq_1_5 or 0)/total*100 if total else 0) }}% &nbsp;
+                        Over: {{ "%.1f"|format((row.barons_over_1_5 or 0)/total*100 if total else 0) }}%
+                    </td>
+                    {% for th in [26.5,27.5,28.5,29.5,30.5] %}
+                        {% set over = row['kills_over_' ~ th|string|replace('.', '_')] %}
+                        {% set under = row['kills_under_eq_' ~ th|string|replace('.', '_')] %}
+                        {% set total = (over or 0)+(under or 0) %}
+                        <td colspan="2" class="stats-pct">
+                            U: {{ "%.1f"|format((under or 0)/total*100 if total else 0) }}%<br>
+                            O: {{ "%.1f"|format((over or 0)/total*100 if total else 0) }}%
+                        </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+                {% set tgames = (stats.games_under_eq_4_5_dragones or 0) + (stats.games_over_4_5_dragones or 0) %}
+                <tr class="table-secondary fw-bold text-dark">
+                    <td>Total Torneo</td>
+                    <td>-</td>
+                    <td>{{ stats.games_under_eq_4_5_dragones }}</td>
+                    <td>{{ stats.games_over_4_5_dragones }}</td>
+                    <td>{{ stats.games_under_eq_11_5_torres }}</td>
+                    <td>{{ stats.games_over_11_5_torres }}</td>
+                    <td>{{ stats.games_under_eq_12_5_torres }}</td>
+                    <td>{{ stats.games_over_12_5_torres }}</td>
+                    <td>{{ stats.games_under_eq_1_5_barones }}</td>
+                    <td>{{ stats.games_over_1_5_barones }}</td>
+                    {% for th in [26.5,27.5,28.5,29.5,30.5] %}
+                        {% set over = stats['games_over_' ~ th|string|replace('.', '_') ~ '_kills'] %}
+                        {% set under = (tgames or 0) - (over or 0) %}
+                        <td>{{ under }}</td>
+                        <td>{{ over }}</td>
+                    {% endfor %}
+                </tr>
+                <tr class="table-secondary fw-bold text-dark">
+                    <td colspan="2">Totales %</td>
+                    <td colspan="2" class="stats-pct">
+                        Under: {{ "%.1f"|format((stats.games_under_eq_4_5_dragones or 0)/tgames*100 if tgames else 0) }}% &nbsp;
+                        Over: {{ "%.1f"|format((stats.games_over_4_5_dragones or 0)/tgames*100 if tgames else 0) }}%
+                    </td>
+                    <td colspan="2" class="stats-pct">
+                        Under: {{ "%.1f"|format((stats.games_under_eq_11_5_torres or 0)/(tgames or 1)*100) }}% &nbsp;
+                        Over: {{ "%.1f"|format((stats.games_over_11_5_torres or 0)/(tgames or 1)*100) }}%
+                    </td>
+                    <td colspan="2" class="stats-pct">
+                        Under: {{ "%.1f"|format((stats.games_under_eq_12_5_torres or 0)/(tgames or 1)*100) }}% &nbsp;
+                        Over: {{ "%.1f"|format((stats.games_over_12_5_torres or 0)/(tgames or 1)*100) }}%
+                    </td>
+                    <td colspan="2" class="stats-pct">
+                        Under: {{ "%.1f"|format((stats.games_under_eq_1_5_barones or 0)/(tgames or 1)*100) }}% &nbsp;
+                        Over: {{ "%.1f"|format((stats.games_over_1_5_barones or 0)/(tgames or 1)*100) }}%
+                    </td>
+                    {% for th in [26.5,27.5,28.5,29.5,30.5] %}
+                        {% set over = stats['games_over_' ~ th|string|replace('.', '_') ~ '_kills'] %}
+                        {% set under = (tgames or 0) - (over or 0) %}
+                        {% set total = (over or 0)+(under or 0) %}
+                        <td colspan="2" class="stats-pct">
+                            U: {{ "%.1f"|format((under or 0)/total*100 if total else 0) }}%<br>
+                            O: {{ "%.1f"|format((over or 0)/total*100 if total else 0) }}%
+                        </td>
+                    {% endfor %}
+                </tr>
+            </tbody>
+        </table>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

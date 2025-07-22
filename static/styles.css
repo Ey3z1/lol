@@ -364,12 +364,61 @@ li:hover {
     border-width: 2px;
 }
 
+/* Logo de equipo */
+.team-logo{
+    width:40px;
+    height:40px;
+    object-fit:contain;
+}
+
+/* Badges de tier con colores llamativos */
+.tier-badge{
+    padding:.20rem .55rem;
+    border-radius:12px;
+    font-size:.75rem;
+    font-weight:600;
+}
+
+.tier-display {
+  position: relative;
+  cursor: pointer;
+  transition: background-color .2s;
+}
+.tier-display .edit-icon {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: .75em;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.tier-display:hover {
+  background-color: rgba(255,255,255,.1);
+}
+.tier-display:hover .edit-icon {
+  opacity: 1;
+}
+.inline-input {
+  width: 2.2em;
+  padding: 0;
+  font-size: .85em;
+  text-align: center;
+}
+.tier-1{background:#f5d142;color:#000;}
+.tier-2{background:#bfc0c0;color:#000;}
+.tier-3{background:#cd7f32;}
+.tier-4{background:#6c757d;}
+
+
 .probability-bar { height: 20px; border-radius: 10px; }
 .supero-linea { background-color: #d4edda !important; }
 .no-supero { background-color: #f8d7da !important; }
 .ev-positivo { color: #28a745; font-weight: bold; }
 .ev-negativo { color: #dc3545; font-weight: bold; }
-
+ .stats-over { color: #19e26a; font-weight: bold;}
+        .stats-under { color: #ef4444; font-weight: bold;}
+        .table-stats th, .table-stats td { text-align: center; vertical-align: middle;}
+        .bg-header { background-color: #262b40 !important; }
 
 /* Ajustes Responsivos */
 @media (max-width: 768px) {

@@ -2,6 +2,7 @@ import mysql.connector
 from datetime import datetime, timedelta
 import time
 import hashlib
+import json
 from config_local import DB_CONFIG
 
 
@@ -98,6 +99,24 @@ def insert_participant(cursor, game_id, player_id, team_id, champion_id, data):
         data.get('totalGold', 0),
         data.get('creepScore', 0)
     ))
+
+def insert_busquedas_ev(connection, data, team1_id, team2_id):
+    datos_formulario = json.dumps(data)
+    fecha_actual = datetime.now() 
+    cursor = connection.cursor(dictionary=True)
+    
+    query = """
+        INSERT INTO BUSQUEDAS_EV_JUGADORES (datos_formulario, fecha, team1_id, team2_id)
+        VALUES (%s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+            datos_formulario = VALUES(datos_formulario),
+            fecha = VALUES(fecha),
+            team1_id = VALUES(team1_id),
+            team2_id = VALUES(team2_id)
+    """
+    cursor.execute(query, (datos_formulario, fecha_actual, team1_id, team2_id))
+    connection.commit()
+    cursor.close()
 
 def get_formatted_starting_time():
     now = datetime.utcnow() - timedelta(seconds=30)
@@ -419,29 +438,53 @@ def crear_match(connection, torneo_id, team_blue_id, team_red_id, game_details):
         winner_team_id = team_blue_id if game_details.winner == 'BLUE' else team_red_id
         start_date = game_details.start[:10]
         match_id = generar_match_id(torneo_id, team_blue_id, team_red_id, start_date)
-        # Convierte a formato compatible con MySQL
         dt = datetime.fromisoformat(game_details.start.replace('Z', '+00:00'))
         mysql_datetime = dt.strftime('%Y-%m-%d %H:%M:%S')
         # Buscar si ya existe el match
-        cursor.execute("SELECT team1_result, team2_result, strategy_count FROM MATCHES WHERE id = %s", (match_id,))
+        cursor.execute(
+            "SELECT team1_result, team2_result, strategy_count FROM MATCHES WHERE id = %s",
+            (match_id,)
+        )
         row = cursor.fetchone()
 
+        # Si no existe el match y es más del game 1, buscar el match del día anterior
+        if not row and getattr(game_details, 'gameInSeries', 1) > 1:
+            dia_anterior = dt - timedelta(days=1)
+            fecha_dia_anterior = dia_anterior.strftime('%Y-%m-%d')
+            cursor.execute(
+                """
+                SELECT id, team1_result, team2_result, strategy_count
+                FROM MATCHES
+                WHERE tournament_id = %s
+                  AND ((team1_id = %s AND team2_id = %s) OR (team1_id = %s AND team2_id = %s))
+                  AND DATE(start_time) = %s
+                """,
+                (torneo_id, team_blue_id, team_red_id, team_red_id, team_blue_id, fecha_dia_anterior)
+            )
+            row = cursor.fetchone()
+            if row:
+                match_id = row[0]  # <-- ¡Actualiza el match_id con el encontrado!
+
+        # Si aún no existe, insertar nuevo match
         if not row:
-            # Insertar nuevo match con best-of 1
             team1_result = 1 if winner_team_id == team_blue_id else 0
             team2_result = 1 if winner_team_id == team_red_id else 0
             strategy_count = 1
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO MATCHES
                 (id, tournament_id, strategy_type, strategy_count, team1_result, team2_result, team1_id, team2_id, start_time)
                 VALUES (%s, %s, 'bestOf', %s, %s, %s, %s, %s, %s)
-            """, (match_id, torneo_id, strategy_count, team1_result, team2_result, team_blue_id, team_red_id, mysql_datetime))
+                """,
+                (match_id, torneo_id, strategy_count, team1_result, team2_result, team_blue_id, team_red_id, mysql_datetime)
+            )
 
         connection.commit()
         return match_id
     finally:
         cursor.close()
-        
+
+
 def leaguepedia_match_id(torneo_id, team1_id, team2_id, fecha):
     """
     Genera un ID BIGINT único para un match de Leaguepedia.
@@ -456,6 +499,33 @@ def leaguepedia_match_id(torneo_id, team1_id, team2_id, fecha):
     # Fecha en formato YYMMDD (6 dígitos)
     ymd = int(fecha.strftime("%y%m%d"))
     return base + tid * 10**10 + t1 * 10**6 + t2 * 10**2 + (ymd % 100)
+
+def cambiar_tier(torneo_id, new_tier, team_id):
+    connection = mysql.connector.connect(**DB_CONFIG)
+    cursor = connection.cursor(dictionary=True)
+
+ # Ejecutar UPDATE en la tabla team_tournament
+    sql = """
+      UPDATE team_tournament
+      SET tier = %s
+      WHERE tournament_id = %s AND team_id = %s
+    """
+    cursor = connection.cursor()
+    cursor.execute(sql, (new_tier, torneo_id, team_id))
+    connection.commit()
+    cursor.close()
+
+def add_team_to_team_tournament(connection, team_id, torneo_id, tier=0):
+    cursor = connection.cursor()
+    try:
+        cursor.execute(
+            "INSERT IGNORE INTO team_tournament (team_id, tournament_id, tier) VALUES (%s, %s, %s)",
+            (team_id, torneo_id, tier)
+        )
+        connection.commit()
+    finally:
+        cursor.close()
+
 
 # if __name__ == "__main__":
 #     connection = None

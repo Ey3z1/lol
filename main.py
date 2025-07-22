@@ -1,10 +1,12 @@
+import json
 from flask import Flask, render_template, jsonify, request
 import mysql.connector
 from datetime import datetime, timedelta
 import time
 import requests
 from game_importer import importar_diferencial, obtener_torneos_de_bbdd, obtener_torneos_con_matches_de_bbdd  # Importación clave
-from game_select import obtener_games_por_match,obtener_matches_por_torneo, obtener_partidas_kills_equipo,obtener_torneo_por_id, obtener_campeon_por_id,obtener_equipos_con_imagen,obtener_champions_con_imagen, obtener_jugadores_por_equipos, obtener_jugador_por_id, obtener_partidas_jugador  # Importación clave
+from game_insert import cambiar_tier, insert_busquedas_ev
+from game_select import get_searches_by_id, get_ultimas_busquedas, obtener_clasificacion_torneo, obtener_games_por_match,obtener_matches_por_torneo, obtener_partidas_kills_equipo, obtener_stats_equipos, obtener_stats_torneo,obtener_torneo_por_id, obtener_campeon_por_id,obtener_equipos_con_imagen,obtener_champions_con_imagen, obtener_jugadores_por_equipos, obtener_jugador_por_id, obtener_partidas_jugador  # Importación clave
 import math
 from datetime import datetime
 import ast
@@ -76,6 +78,49 @@ def ver_torneo(torneo_id):
         'lista_matches.html',
         torneo=torneo,
         matches=matches
+    )
+
+@app.route('/torneo/<int:torneo_id>/equipo/<int:team_id>/tier', methods=['POST'])
+def actualizar_tier(torneo_id, team_id):
+    data = request.get_json()
+    new_tier = data.get('tier')
+    # Validar que new_tier sea un entero válido
+    try:
+        new_tier = int(new_tier)
+        assert 1 <= new_tier <= 5
+    except:
+        return jsonify({"error":"Tier inválido"}), 400
+    cambiar_tier(torneo_id, new_tier,team_id)
+   
+    return jsonify({"success":True}), 200
+
+@app.route('/torneo/<int:torneo_id>/clasificacion')
+def clasificacion_torneo(torneo_id):
+    # Obtener información del torneo (opcional)
+    torneo = obtener_torneo_por_id(torneo_id)
+    
+    # Obtener matches y games asociados al torneo
+    clasificacion = obtener_clasificacion_torneo(torneo_id)
+
+    return render_template(
+        'clasificacion_torneo.html',
+        torneo=torneo,
+        clasificacion=clasificacion
+    )
+
+@app.route('/torneo/<int:torneo_id>/stats')
+def stats_torneo(torneo_id):
+    # Obtener información del torneo (opcional)
+    torneo = obtener_torneo_por_id(torneo_id)
+    
+    # Obtener matches y games asociados al torneo
+    stats = obtener_stats_torneo(torneo_id)
+    stats_equipos = obtener_stats_equipos(torneo_id)
+    return render_template(
+        'stats_torneo.html',
+        torneo=torneo,
+        stats=stats,
+        stats_equipos =stats_equipos
     )
 
 # @app.route('/match/<int:match_id>')
@@ -165,14 +210,20 @@ def calcular_probabilidades(cuota1, cuota2):
 @app.route('/ev_calculo', methods=['POST'])
 def ev_calculo():
     data = request.form
+    data_dict = data.to_dict()
+
+    bans = data.getlist('bans[]')
+    data_dict['bans[]'] = bans
+    connection = mysql.connector.connect(**DB_CONFIG)
     team1 = data.get('team1')
     team2 = data.get('team2')
     team1_dict = ast.literal_eval(team1)
     team2_dict = ast.literal_eval(team2)
     team1_id = team1_dict['id']
+    team2_id = team2_dict['id']
+    insert_busquedas_ev(connection, data_dict, team1_id, team2_id)
     cuota1 = float(data.get('cuota1'))
     cuota2 = float(data.get('cuota2'))
-    bans = data.getlist('bans[]')
 
     banned_champs = []
     for ban_id in bans:
@@ -187,10 +238,8 @@ def ev_calculo():
                 })
 
     # Extraer datos de equipos
-    team1_id = team1_dict['id']
     team1_name = team1_dict['name']
     team1_img = team1_dict['image']   # <--- URL de la imagen
-    team2_id = team2_dict['id']
     team2_name = team2_dict['name']
     team2_img = team2_dict['image']   # <--- URL de la imagen
     
@@ -272,15 +321,30 @@ def ev_calculo():
         team2_img=team2_img,
         team1_id = team1_id,
         team2_id = team2_id,
-        prob_team1=round(prob_team1*100, 2),
+        prob_favorito=round(prob_team1*100, 2),
         prob_team2=round(prob_team2*100, 2)
     )
 
+@app.route('/get_previous_searches', methods=['GET'])
+def get_previous_searches():
+    searches = get_ultimas_busquedas()
+    return jsonify(searches)
+
+@app.route('/get_search_data/<int:search_id>', methods=['GET'])
+def get_search_data(search_id):
+    result = get_searches_by_id(search_id)
+    
+    if result:
+        # Convertir el JSON string de vuelta a objeto
+        data = json.loads(result['datos_formulario'])
+        data['team1_id'] = result['team1_id']
+        data['team2_id'] = result['team2_id']
+        return jsonify(data)
+    
+    return jsonify({'error': 'No encontrado'}), 404
+
 @app.route('/procesar_kills', methods=['POST'])
 def procesar_kills():
-    """
-    Procesa el cálculo de Expected Value para líneas de kills de equipos
-    """
     data = request.form
     
     # Obtener datos del formulario
@@ -292,121 +356,154 @@ def procesar_kills():
         cuota2 = float(request.form.get('cuota2')) if request.form.get('cuota2') else None
     except ValueError:
         cuota1 = cuota2 = None
+    
     linea_kills_team1 = float(data.get('linea_kills_team1'))
     linea_kills_team2 = float(data.get('linea_kills_team2'))
     
+    # Determinar favorito y underdog por signo de línea
+    favorito_id, underdog_id, linea_fav, linea_under = asignar_favorito_underdog_por_linea(
+        linea_kills_team1, linea_kills_team2, team1_id, team2_id
+    )
     
-    # Calcular probabilidades implícitas de victoria
-    prob_team1_win = (1 / cuota1) / ((1 / cuota1) + (1 / cuota2))
+
+
+    prob_team1_win = (1 / cuota1) / ((1 / cuota1) + (1 / cuota2)) if cuota1 and cuota2 else 0.5
     prob_team2_win = 1 - prob_team1_win
     
-    # Obtener partidas históricas de ambos equipos
-    partidas_team1 = obtener_partidas_kills_equipo(team1_id)
-    
-    partidas_team2 = obtener_partidas_kills_equipo(team2_id)
+    # Obtener partidas históricas
+    partidas_favorito = obtener_partidas_kills_equipo(favorito_id)
+    partidas_underdog = obtener_partidas_kills_equipo(underdog_id)
     
     equipos_stats = []
+    # Calcular probabilidades implícitas de victoria
+    if team1_id == favorito_id:
+        prob_favorito = prob_team1_win
+        prob_underdog = prob_team2_win
+    else:
+        prob_favorito = prob_team2_win
+        prob_underdog = prob_team1_win
     
-    # Procesar Team 1
-    if partidas_team1:
-        team1_name = partidas_team1[0]['equipo_nombre']
-        team1_img = partidas_team1[0]['equipo_img']
-        # Separar partidas en victorias y derrotas
-        victorias_t1 = [p for p in partidas_team1 if p['ganado_kills']]
-        derrotas_t1 = [p for p in partidas_team1 if not p['ganado_kills']]
+    # Procesar FAVORITO (línea negativa)
+    if partidas_favorito:
+        fav_name = partidas_favorito[0]['equipo_nombre']
+        fav_img = partidas_favorito[0]['equipo_img']
         
-        # Calcular estadísticas para superar la línea
-        supero_victorias_t1 = sum(1 for p in victorias_t1 if p['diferencia_kills'] >= linea_kills_team1)
-        supero_derrotas_t1 = sum(1 for p in derrotas_t1 if p['diferencia_kills'] >= linea_kills_team1)
+        victorias_fav = [p for p in partidas_favorito if p['resultado']]
+        derrotas_fav = [p for p in partidas_favorito if not p['resultado']]
         
-        # Probabilidades condicionales
-        prob_over_win_t1 = supero_victorias_t1 / len(victorias_t1) if len(victorias_t1) > 0 else 0
-        prob_over_lose_t1 = supero_derrotas_t1 / len(derrotas_t1) if len(derrotas_t1) > 0 else 0
+        # Condición para favorito: diferencia_kills >= línea positiva
+        supero_victorias_fav = sum(1 for p in victorias_fav if p['diferencia_kills'] + linea_fav > 0)
+        supero_derrotas_fav = sum(1 for p in derrotas_fav if p['diferencia_kills'] + linea_fav >0)
         
-        # Probabilidad total de superar la línea
-        prob_over_total_t1 = (prob_over_win_t1 * prob_team1_win) + (prob_over_lose_t1 * prob_team2_win)
-        prob_under_total_t1 = 1 - prob_over_total_t1
+        # Cálculos probabilísticos (igual que antes)
+        prob_over_dado_victoria_fav = supero_victorias_fav / len(victorias_fav) if victorias_fav else 0
+        prob_over_dado_derrota_fav = supero_derrotas_fav / len(derrotas_fav) if derrotas_fav else 0
         
-        # Calcular porcentajes para mostrar
-        prob_superar_victorias_t1 = (supero_victorias_t1 / len(victorias_t1) * 100) if len(victorias_t1) > 0 else 0
-        prob_superar_derrotas_t1 = (supero_derrotas_t1 / len(derrotas_t1) * 100) if len(derrotas_t1) > 0 else 0
-        prob_superar_total_t1 = ((supero_victorias_t1 + supero_derrotas_t1) / len(partidas_team1) * 100) if len(partidas_team1) > 0 else 0
+        prob_over_total_fav = (prob_over_dado_victoria_fav * prob_favorito) + (prob_over_dado_derrota_fav * prob_underdog)
+        prob_under_total_fav = 1 - prob_over_total_fav
         
+        # Añadir estadísticas del favorito
         equipos_stats.append({
-            'team_id': team1_id,
-            'team_name': team1_name,
-            'team_img': team1_img,
-            'linea': linea_kills_team1,
-            'prob_over': round(prob_over_total_t1 * 100, 2),
-            'prob_under': round(prob_under_total_t1 * 100, 2),
-            'supero_victorias': supero_victorias_t1,
-            'supero_derrotas': supero_derrotas_t1,
-            'total_victorias': len(victorias_t1),
-            'total_derrotas': len(derrotas_t1),
-            'total_partidas': len(partidas_team1),
-            'prob_superar_victorias': round(prob_superar_victorias_t1, 2),
-            'prob_superar_derrotas': round(prob_superar_derrotas_t1, 2),
-            'prob_superar_total': round(prob_superar_total_t1, 2),
-            'partidas': partidas_team1
+            'team_id': favorito_id,
+            'team_name': fav_name,
+            'team_img': fav_img,
+            'linea': linea_fav,
+            'tipo_apuesta': f'Gana por más de {linea_fav} kills',
+            'prob_over': round(prob_over_total_fav * 100, 2),
+            'prob_under': round(prob_under_total_fav * 100, 2),
+            'supero_victorias': supero_victorias_fav,
+            'supero_derrotas': supero_derrotas_fav,
+            'total_victorias': len(victorias_fav),
+            'total_derrotas': len(derrotas_fav),
+            'total_partidas': len(partidas_favorito),
+            'partidas': partidas_favorito
         })
     
-    # Procesar Team 2 
-    if partidas_team2:
-        team2_name = partidas_team2[0]['equipo_nombre']
-        team2_img = partidas_team2[0]['equipo_img']
-        # Separar partidas en victorias y derrotas
-        victorias_t2 = [p for p in partidas_team2 if p['ganado_kills']]
-        derrotas_t2 = [p for p in partidas_team2 if not p['ganado_kills']]
+    # Procesar UNDERDOG (línea negativa)
+    if partidas_underdog:
+        under_name = partidas_underdog[0]['equipo_nombre']
+        under_img = partidas_underdog[0]['equipo_img']
         
-        # Calcular estadísticas para superar la línea
-        supero_victorias_t2 = sum(1 for p in victorias_t2 if p['diferencia_kills'] <= linea_kills_team2)
-        supero_derrotas_t2 = sum(1 for p in derrotas_t2 if p['diferencia_kills'] <= linea_kills_team2)
+        victorias_under = [p for p in partidas_underdog if p['resultado']]
+        derrotas_under = [p for p in partidas_underdog if not p['resultado']]
         
-        # Probabilidades condicionales
-        prob_over_win_t2 = supero_victorias_t2 / len(victorias_t2) if len(victorias_t2) > 0 else 0
-        prob_over_lose_t2 = supero_derrotas_t2 / len(derrotas_t2) if len(derrotas_t2) > 0 else 0
+        # Condición para underdog: diferencia_kills <= línea negativa
+        supero_victorias_under = sum(1 for p in victorias_under if p['diferencia_kills'] + linea_under > 0)
+        supero_derrotas_under = sum(1 for p in derrotas_under if p['diferencia_kills'] + linea_under > 0)
+        # Cálculos probabilísticos (igual que antes)
+        prob_over_dado_victoria_under = supero_victorias_under / len(victorias_under) if victorias_under else 0
+        prob_over_dado_derrota_under = supero_derrotas_under / len(derrotas_under) if derrotas_under else 0
         
-        # Probabilidad total de superar la línea
-        prob_over_total_t2 = (prob_over_win_t2 * prob_team2_win) + (prob_over_lose_t2 * prob_team1_win)
-        prob_under_total_t2 = 1 - prob_over_total_t2
+        prob_over_total_under = (prob_over_dado_victoria_under * prob_underdog) + (prob_over_dado_derrota_under * prob_favorito)
+        prob_under_total_under = 1 - prob_over_total_under
         
-        # Calcular porcentajes para mostrar
-        prob_superar_victorias_t2 = (supero_victorias_t2 / len(victorias_t2) * 100) if len(victorias_t2) > 0 else 0
-        prob_superar_derrotas_t2 = (supero_derrotas_t2 / len(derrotas_t2) * 100) if len(derrotas_t2) > 0 else 0
-        prob_superar_total_t2 = ((supero_victorias_t2 + supero_derrotas_t2) / len(partidas_team2) * 100) if len(partidas_team2) > 0 else 0
-        
+        # Añadir estadísticas del underdog
         equipos_stats.append({
-            'team_id': team2_id,
-            'team_name': team2_name,
-            'team_img': team2_img,
-            'linea': abs(linea_kills_team2),  # Usar valor absoluto para la línea
-            'prob_over': round(prob_over_total_t2 * 100, 2),
-            'prob_under': round(prob_under_total_t2 * 100, 2),
-            'supero_victorias': supero_victorias_t2,
-            'supero_derrotas': supero_derrotas_t2,
-            'total_victorias': len(victorias_t2),
-            'total_derrotas': len(derrotas_t2),
-            'total_partidas': len(partidas_team2),
-            'prob_superar_victorias': round(prob_superar_victorias_t2, 2),
-            'prob_superar_derrotas': round(prob_superar_derrotas_t2, 2),
-            'prob_superar_total': round(prob_superar_total_t2, 2),
-            'partidas': partidas_team2
+            'team_id': underdog_id,
+            'team_name': under_name,
+            'team_img': under_img,
+            'linea': abs(linea_under),  # Mostrar valor absoluto
+            'tipo_apuesta': f'Pierde por menos de {abs(linea_under)} kills',
+            'prob_over': round(prob_over_total_under * 100, 2),
+            'prob_under': round(prob_under_total_under * 100, 2),
+            'supero_victorias': supero_victorias_under,
+            'supero_derrotas': supero_derrotas_under,
+            'total_victorias': len(victorias_under),
+            'total_derrotas': len(derrotas_under),
+            'total_partidas': len(partidas_underdog),
+            'partidas': partidas_underdog
         })
+    
+    # MODELO COMBINADO
+    modelo_combinado = None
+    if len(equipos_stats) == 2:
+        prob_fav_cubre = equipos_stats[0]['prob_over'] / 100
+        prob_under_cubre = equipos_stats[1]['prob_over'] / 100
+        
+        # Probabilidad combinada ponderada
+        prob_linea_se_cubre = (prob_fav_cubre * 0.6) + (prob_under_cubre * 0.4)
+        
+        modelo_combinado = {
+            'prob_linea_se_cubre': round(prob_linea_se_cubre * 100, 2),
+            'prob_linea_no_se_cubre': round((1 - prob_linea_se_cubre) * 100, 2),
+            'recomendacion': 'OVER' if prob_linea_se_cubre > 0.52 else 'UNDER',
+            'confianza': round(abs(prob_linea_se_cubre - 0.5) * 200, 2)
+        }
     
     return render_template(
-        'kills_calculo.html',  # Nuevo template para mostrar resultados de kills
+        'kills_calculo.html',
         equipos_stats=equipos_stats,
-        team1_name=team1_name,
-        team2_name=team2_name,
-        team1_img=team1_img,
-        team2_img=team2_img,
-        team1_id=team1_id,
-        team2_id=team2_id,
-        prob_team1=round(prob_team1_win * 100, 2),
-        prob_team2=round(prob_team2_win * 100, 2),
-        linea_team1=linea_kills_team1,
-        linea_team2=abs(linea_kills_team2)
+        team1_name=fav_name if 'fav_name' in locals() else 'Team 1',
+        team2_name=under_name if 'under_name' in locals() else 'Team 2',
+        team1_img=fav_img if 'fav_img' in locals() else '',
+        team2_img=under_img if 'under_img' in locals() else '',
+        prob_team1=round(prob_favorito * 100, 2),
+        prob_team2=round(prob_underdog * 100, 2),
+        modelo_combinado=modelo_combinado
     )
+
+
+def asignar_favorito_underdog_por_linea(linea1, linea2, team1_id, team2_id):
+    """
+    Asigna favorito y underdog según el signo de la línea de kills
+    
+    Args:
+        linea1 (float): Línea del equipo 1
+        linea2 (float): Línea del equipo 2
+        team1_id (str): ID equipo 1
+        team2_id (str): ID equipo 2
+        
+    Returns:
+        tuple: (favorito_id, underdog_id, linea_fav, linea_under)
+    """
+    if linea1 < 0 and linea2 > 0:
+        return team1_id, team2_id, linea1, linea2
+    elif linea1 > 0 and linea2 < 0:
+        return team2_id, team1_id, linea2, linea1
+    else:
+        # Caso por defecto si los signos son iguales
+        return team1_id, team2_id, abs(linea1), -abs(linea2)
+
 
 
 

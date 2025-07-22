@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Clasificación – {{ torneo.name if torneo else 'Torneo' }}</title>
+
+    <!-- Bootstrap 5 oscuro -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Hoja de estilos propia -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body class="bg-dark text-light">
+
+    <!-- NAVBAR ------------------------------------------------------------->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary" data-bs-theme="dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">🏆 LoL eStats</a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="mainNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item"><a class="nav-link" href="/seleccionar-torneos">📥 Descargas</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/torneo">📊 Torneos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/futuras_partidas">⏳ Próximos</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- CONTENIDO PRINCIPAL ----------------------------------------------->
+    <div class="container py-4">
+        <!-- Cabecera del torneo -->
+        <div class="text-center mb-4">
+            <h2 class="fw-bold">{{ torneo.name }}</h2>
+            <p class="text-secondary mb-0">Clasificación general</p>
+        </div>
+
+        <!-- TABLA DE CLASIFICACIÓN ------------------------------------------>
+        <div class="table-responsive shadow">
+            <table class="table table-dark table-hover align-middle mb-0">
+                <thead class="align-middle">
+                    <tr class="bg-secondary">
+                        <th class="text-center">#</th>
+                        <th>Equipo</th>
+                        <th class="text-center">Tier</th>
+                        <th class="text-center">Matches</th>
+                        <th class="text-center">W-L (M)</th>
+                        <th class="text-center">Games</th>
+                        <th class="text-center">W-L (G)</th>
+                        <th class="text-center">Winrate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in clasificacion %}
+                    <tr>
+                        <!-- Posición -->
+                        <td class="text-center">{{ loop.index }}</td>
+
+                        <!-- Logo + Nombre -->
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                {% if row.team_image.startswith('http') %}
+                                    <img src="{{ row.team_image }}"
+                                         alt="{{ row.team_name }}"
+                                         class="team-logo">
+                                {% else %}
+                                    <img src="{{ url_for('static', filename=row.team_image) }}"
+                                         alt="{{ row.team_name }}"
+                                         class="team-logo">
+                                {% endif %}
+                                <span class="fw-semibold">{{ row.team_name }}</span>
+                            </div>
+                        </td>
+
+                        <!-- Tier -->
+                        <td class="text-center">
+                            <span class="badge tier-badge tier-{{ row.tier }} tier-display"
+                                    data-team-id="{{ row.team_id }}">
+                                {{ row.tier }}
+                                <i class="fa-solid fa-pen-to-square edit-icon"></i>
+                            </span>
+                        </td>
+
+                        <!-- Matches jugados -->
+                        <td class="text-center">{{ row.matches_jugados }}</td>
+
+                        <!-- W-L Matches -->
+                        <td class="text-center">
+                            <span class="text-success fw-bold">{{ row.matches_ganados }}</span>
+                            <span class="mx-1">–</span>
+                            <span class="text-danger fw-bold">{{ row.matches_perdidos }}</span>
+                        </td>
+
+                        <!-- Games jugados -->
+                        <td class="text-center">{{ row.games_jugados }}</td>
+
+                        <!-- W-L Games -->
+                        <td class="text-center">
+                            <span class="text-success fw-bold">{{ row.games_ganados }}</span>
+                            <span class="mx-1">–</span>
+                            <span class="text-danger fw-bold">{{ row.games_perdidos }}</span>
+                        </td>
+
+                        <!-- Winrate -->
+                        <td class="text-center" >
+                            {% set winrate = (row.games_ganados / row.games_jugados * 100) if row.games_jugados else 0 %}
+                            <div class="progress bg-secondary" style="height: 6px;">
+                                <div class="progress-bar
+                                    {% if winrate >= 70 %}bg-success
+                                    {% elif winrate >= 50 %}bg-warning
+                                    {% else %}bg-danger{% endif %}"
+                                    style="width: {{ winrate }}%;"></div>
+                            </div>
+                            <small class="text-white">{{ "%.1f"|format(winrate) }} %</small>
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    {% if not clasificacion %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-secondary">
+                            No hay equipos registrados en este torneo.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('.tier-display').forEach(badge => {
+        badge.addEventListener('click', () => {
+            const teamId = badge.dataset.teamId;
+            const current = badge.textContent.trim();
+            // Crear input
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.min = 1; input.max = 5;
+            input.value = current;
+            input.className = 'form-control form-control-sm inline-input';
+            badge.replaceWith(input);
+            input.focus();
+            // Al salir de foco, guardar y volver a badge
+            input.addEventListener('blur', () => {
+            const newTier = input.value;
+            fetch(`/torneo/{{ torneo.id }}/equipo/${teamId}/tier`, {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ tier: newTier })
+            })
+            .then(res => {
+                if (!res.ok) throw new Error();
+                // Construir nuevo badge
+                const span = document.createElement('span');
+                span.className = `badge tier-badge tier-${newTier} tier-display`;
+                span.dataset.teamId = teamId;
+                span.innerHTML = `${newTier} <i class="fa-solid fa-pen-to-square edit-icon"></i>`;
+                input.replaceWith(span);
+            })
+            .catch(() => {
+                // Si fallo, recuperar el valor antiguo
+                input.value = current;
+                input.replaceWith(badge);
+            });
+            });
+        });
+        });
+    </script>
+
+    <!-- Bootstrap JS (opcional si ya lo cargas en layout base) ------------->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

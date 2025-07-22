@@ -11,5 +11,20 @@ MAPEO_TORNEOS = {
     ],
     '113470835034591734': [
         '2025 Mid-Season Invitational'
+    ],
+    '113470333882171435': [
+        'LTA North/2025 Season/Split 1',
+        'LTA/2025 Season/Split 1 Playoffs'
+    ],
+    '1': [
+        'Esports World Cup 2025'
+    ],
+    '2': [
+        'LPL/2025 Season/Split 3'
+    ],
+    '3': [
+        "Superliga Domino's/2025 Season/Summer Split",
+        "Superliga Domino's/2025 Season/Summer Swiss",
+        "Superliga Domino's/2025 Season/Summer Playoffs"
     ]
 }

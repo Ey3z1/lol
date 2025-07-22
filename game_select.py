@@ -20,6 +20,193 @@ def obtener_torneo_por_id(torneo_id):
     connection.close()
     return torneo
 
+def obtener_clasificacion_torneo(torneo_id):
+    connection = mysql.connector.connect(**DB_CONFIG)
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT
+    t.id AS team_id,
+    t.name AS team_name,
+    t.image AS team_image,
+    tt.tier AS tier,
+    COUNT(DISTINCT m.id) AS matches_jugados,
+    SUM(
+      CASE
+        WHEN (m.team1_id = t.id AND m.team1_result > m.team2_result)
+          OR (m.team2_id = t.id AND m.team2_result > m.team1_result)
+        THEN 1 ELSE 0 END
+    ) AS matches_ganados,
+    SUM(
+      CASE
+        WHEN (m.team1_id = t.id AND m.team1_result < m.team2_result)
+          OR (m.team2_id = t.id AND m.team2_result < m.team1_result)
+        THEN 1 ELSE 0 END
+    ) AS matches_perdidos,
+
+    -- Games jugados, ganados y perdidos usando subselects con COUNT(DISTINCT)
+    (
+      SELECT COUNT(DISTINCT gs.game_id)
+      FROM game_stats gs
+      JOIN game g ON g.id = gs.game_id
+      WHERE gs.team_id = t.id
+        AND g.match_id IN (
+            SELECT id FROM matches WHERE tournament_id = tt.tournament_id
+        )
+    ) AS games_jugados,
+
+    (
+      SELECT COUNT(DISTINCT gs.game_id)
+      FROM game_stats gs
+      JOIN game g ON g.id = gs.game_id
+      WHERE gs.team_id = t.id AND gs.resultado = 1
+        AND g.match_id IN (
+            SELECT id FROM matches WHERE tournament_id = tt.tournament_id
+        )
+    ) AS games_ganados,
+
+    (
+      SELECT COUNT(DISTINCT gs.game_id)
+      FROM game_stats gs
+      JOIN game g ON g.id = gs.game_id
+      WHERE gs.team_id = t.id AND gs.resultado = 0
+        AND g.match_id IN (
+            SELECT id FROM matches WHERE tournament_id = tt.tournament_id
+        )
+    ) AS games_perdidos
+
+FROM
+    team_tournament tt
+JOIN team t ON t.id = tt.team_id
+LEFT JOIN matches m ON (
+    (m.team1_id = t.id OR m.team2_id = t.id)
+    AND m.tournament_id = tt.tournament_id
+)
+WHERE
+    tt.tournament_id = %s
+GROUP BY
+    t.id, t.name, t.image, tt.tier
+ORDER BY
+    matches_ganados DESC, matches_perdidos ASC;
+
+    """, (torneo_id,))
+    clasificacion = cursor.fetchall()
+    cursor.close()
+    connection.close()
+    return clasificacion
+
+def obtener_stats_torneo(torneo_id):
+    connection = mysql.connector.connect(**DB_CONFIG)
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute("""
+         WITH totales AS (
+          SELECT
+            g.id AS game_id,
+            SUM(gs.towers)   AS towers,
+            SUM(gs.total_kills)    AS kills,
+            SUM(gs.total_dragons)  AS dragons,
+            SUM(gs.barons)   AS barons
+          FROM game g
+          JOIN game_stats gs ON gs.game_id = g.id
+          JOIN matches m ON m.id = g.match_id
+          WHERE m.tournament_id = %s
+          GROUP BY g.id
+        )
+        SELECT
+          -- Medias por game
+          ROUND(AVG(towers), 2)  AS media_torres,
+          ROUND(AVG(kills), 2)   AS media_kills,
+          ROUND(AVG(dragons), 2) AS media_dragones,
+          ROUND(AVG(barons), 2)  AS media_barones,
+
+          -- Over/Under torres
+          SUM(CASE WHEN towers > 12.5 THEN 1 ELSE 0 END)         AS games_over_12_5_torres,
+          SUM(CASE WHEN towers <= 12.5 THEN 1 ELSE 0 END)        AS games_under_eq_12_5_torres,
+          SUM(CASE WHEN towers > 11.5 THEN 1 ELSE 0 END)         AS games_over_11_5_torres,
+          SUM(CASE WHEN towers <= 11.5 THEN 1 ELSE 0 END)        AS games_under_eq_11_5_torres,
+
+          -- Over/Under dragones
+          SUM(CASE WHEN dragons > 4.5 THEN 1 ELSE 0 END)         AS games_over_4_5_dragones,
+          SUM(CASE WHEN dragons <= 4.5 THEN 1 ELSE 0 END)        AS games_under_eq_4_5_dragones,
+
+          -- Over thresholds kills
+          SUM(CASE WHEN kills > 26.5 THEN 1 ELSE 0 END)          AS games_over_26_5_kills,
+          SUM(CASE WHEN kills > 27.5 THEN 1 ELSE 0 END)          AS games_over_27_5_kills,
+          SUM(CASE WHEN kills > 28.5 THEN 1 ELSE 0 END)          AS games_over_28_5_kills,
+          SUM(CASE WHEN kills > 29.5 THEN 1 ELSE 0 END)          AS games_over_29_5_kills,
+          SUM(CASE WHEN kills > 30.5 THEN 1 ELSE 0 END)          AS games_over_30_5_kills,
+
+          -- Over/Under barones
+          SUM(CASE WHEN barons > 1.5 THEN 1 ELSE 0 END)          AS games_over_1_5_barones,
+          SUM(CASE WHEN barons <= 1.5 THEN 1 ELSE 0 END)         AS games_under_eq_1_5_barones
+
+        FROM totales;
+    """, (torneo_id,))
+    stats = cursor.fetchone()
+    cursor.close()
+    connection.close()
+    return stats
+
+def obtener_stats_equipos(torneo_id):
+    connection = mysql.connector.connect(**DB_CONFIG)
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute("""
+         WITH participaciones AS (
+    SELECT
+        t.id         AS team_id,
+        t.name       AS team_name,
+        t.image     AS team_image,
+        tt.tier      AS tier,
+        tg.game_id,
+        tg.dragons   AS dragons_totales,
+        tg.towers    AS towers_totales,
+        tg.barons    AS barons_totales,
+        tg.kills     AS kills_totales
+    FROM team_tournament tt
+    JOIN team t ON t.id = tt.team_id
+    JOIN matches m ON m.tournament_id = tt.tournament_id
+        AND (m.team1_id = t.id OR m.team2_id = t.id)
+    JOIN game g ON g.match_id = m.id
+    JOIN totales_game tg ON tg.game_id = g.id
+    WHERE tt.tournament_id = %s
+    GROUP BY t.id, t.name, tt.tier, tg.game_id, tg.dragons, tg.towers, tg.barons, tg.kills
+)
+SELECT
+    team_id,
+    team_name,
+    team_image,
+    tier,
+    -- Dragones 4.5
+    COUNT(CASE WHEN dragons_totales > 4.5  THEN 1 END) AS dragons_over_4_5,
+    COUNT(CASE WHEN dragons_totales <= 4.5 THEN 1 END) AS dragons_under_eq_4_5,
+    -- Torres 12.5 y 11.5
+    COUNT(CASE WHEN towers_totales > 12.5  THEN 1 END) AS towers_over_12_5,
+    COUNT(CASE WHEN towers_totales <= 12.5 THEN 1 END) AS towers_under_eq_12_5,
+    COUNT(CASE WHEN towers_totales > 11.5  THEN 1 END) AS towers_over_11_5,
+    COUNT(CASE WHEN towers_totales <= 11.5 THEN 1 END) AS towers_under_eq_11_5,
+    -- Barones 1.5
+    COUNT(CASE WHEN barons_totales > 1.5  THEN 1 END) AS barons_over_1_5,
+    COUNT(CASE WHEN barons_totales <= 1.5 THEN 1 END) AS barons_under_eq_1_5,
+    -- Kills con distintos thresholds
+    COUNT(CASE WHEN kills_totales > 26.5  THEN 1 END) AS kills_over_26_5,
+    COUNT(CASE WHEN kills_totales <= 26.5 THEN 1 END) AS kills_under_eq_26_5,
+    COUNT(CASE WHEN kills_totales > 27.5  THEN 1 END) AS kills_over_27_5,
+    COUNT(CASE WHEN kills_totales <= 27.5 THEN 1 END) AS kills_under_eq_27_5,
+    COUNT(CASE WHEN kills_totales > 28.5  THEN 1 END) AS kills_over_28_5,
+    COUNT(CASE WHEN kills_totales <= 28.5 THEN 1 END) AS kills_under_eq_28_5,
+    COUNT(CASE WHEN kills_totales > 29.5  THEN 1 END) AS kills_over_29_5,
+    COUNT(CASE WHEN kills_totales <= 29.5 THEN 1 END) AS kills_under_eq_29_5,
+    COUNT(CASE WHEN kills_totales > 30.5  THEN 1 END) AS kills_over_30_5,
+    COUNT(CASE WHEN kills_totales <= 30.5 THEN 1 END) AS kills_under_eq_30_5
+FROM participaciones
+GROUP BY team_id, team_name, tier
+ORDER BY team_name;
+
+    """, (torneo_id,))
+    stats = cursor.fetchall()
+    cursor.close()
+    connection.close()
+    return stats
+
 def obtener_matches_por_torneo(torneo_id):
     connection = mysql.connector.connect(**DB_CONFIG)
     cursor = connection.cursor(dictionary=True)
@@ -410,7 +597,7 @@ def obtener_partidas_kills_equipo(team_id):
                 v.diferencia_kills,
                 CASE WHEN v.resultado = 1 THEN TRUE 
                      WHEN v.resultado = 0 THEN FALSE 
-                     ELSE NULL END AS ganado_kills
+                     ELSE NULL END AS resultado
             FROM vista_kills_equipos v
             WHERE v.equipo_id = %s
             ORDER BY v.game_id, v.start_time
@@ -448,3 +635,40 @@ def obtener_max_index_leaguepedia(connection, torneo_id):
         return 0
     finally:
         cursor.close()
+
+def get_ultimas_busquedas():
+    connection = mysql.connector.connect(**DB_CONFIG)
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute('''
+        SELECT 
+            id,
+            datos_formulario,
+            fecha,
+            team1_id,
+            team2_id,
+            CONCAT(
+                'Fecha: ', DATE_FORMAT(fecha, '%d/%m/%Y'),
+                ' - Teams: ', team1_id, ' vs ', team2_id
+            ) as display_text
+        FROM BUSQUEDAS_EV_JUGADORES 
+        ORDER BY fecha DESC 
+        LIMIT 30
+    ''')
+    
+    searches = cursor.fetchall()
+    cursor.close()
+    return searches
+
+def get_searches_by_id(search_id):
+    connection = mysql.connector.connect(**DB_CONFIG)
+
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute('''
+        SELECT datos_formulario, team1_id, team2_id
+        FROM BUSQUEDAS_EV_JUGADORES 
+        WHERE id = %s
+    ''', (search_id,))
+    
+    result = cursor.fetchone()
+    cursor.close()
+    return result

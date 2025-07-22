@@ -3,13 +3,12 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>{{team1_name}} VS {{team2_name}} - Análisis de Kills</title>
+    <title>{{ team1_name }} VS {{ team2_name }} - Análisis de Kills</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/all.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
-<body>
+<body class="bg-dark text-light">
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary" data-bs-theme="dark">
         <div class="container">
@@ -17,35 +16,41 @@
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            
             <div class="collapse navbar-collapse" id="mainNav">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/seleccionar-torneos">📥 Descargas</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/torneo">📊 Torneos</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/futuras_partidas">⏳ Próximos</a>
-                    </li>
+                <ul class="navbar-nav me-auto mb-2 mb365-0">
+                    <li class="nav-item"><a class="nav-link" href="/seleccionar-t0rneo">📥 Descargas</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/torneo">📊 Torneos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/futuras_partidas">⏳ Próximos</a></li>
                 </ul>
             </div>
         </div>
     </nav>
-    
+
     <div class="container mt-4">
-        <h2 class="text-center mb-4">⚔️ {{team1_name}} VS {{team2_name}} - Análisis de Kills ⚔️</h2>
-        
-        <!-- Sección de equipos -->
+        <h2 class="text-center mb-4">⚔️ {{ team1_name }} VS {{ team2_name }} - Análisis de Kills ⚔️</h2>
+
+        {% if modelo_combinado %}
+        <div class="card mb-4 shadow-lg">
+          <div class="card-body text-center bg-secondary text-white">
+            <h4>📊 Modelo Combinado</h4>
+            <p>Probabilidad de cubrir línea: <strong>{{ modelo_combinado.prob_linea_se_cubre }}%</strong></p>
+            <p>Probabilidad de no cubrir línea: <strong>{{ modelo_combinado.prob_linea_no_se_cubre }}%</strong></p>
+            <p>Recomendación:
+              <span class="badge {{ 'bg-success' if modelo_combinado.recomendacion=='OVER' else 'bg-danger' }}">
+                {{ modelo_combinado.recomendacion }}
+              </span>
+            </p>
+            <p>Confianza del modelo: <strong>{{ modelo_combinado.confianza }}%</strong></p>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Sección de probabilidades de victoria -->
         <div class="row mb-4">
             <div class="col-md-6">
                 <div class="card bg-dark text-white">
                     <div class="card-body text-center">
-                        <img src="{{ team1_img }}" 
-                            alt="{{ team1_name }}" 
-                            class="img-fluid mb-3"
-                            style="max-height: 150px;">
+                        <img src="{{ team1_img }}" alt="{{ team1_name }}" class="img32-fluid mb-3" style="max-height:150px;">
                         <h3>{{ team1_name }}</h3>
                         <h1 class="display-4">{{ prob_team1 }}%</h1>
                         <h5>Probabilidad de victoria</h5>
@@ -55,10 +60,7 @@
             <div class="col-md-6">
                 <div class="card bg-dark text-white">
                     <div class="card-body text-center">
-                        <img src="{{ team2_img }}" 
-                            alt="{{ team2_name }}" 
-                            class="img-fluid mb-3"
-                            style="max-height: 150px;">
+                        <img src="{{ team2_img }}" alt="{{ team2_name }}" class="img-fluid mb-3" style="max-height:150px;">
                         <h3>{{ team2_name }}</h3>
                         <h1 class="display-4">{{ prob_team2 }}%</h1>
                         <h5>Probabilidad de victoria</h5>
@@ -72,142 +74,115 @@
         <div class="card mb-4 shadow">
             <div class="card-header bg-secondary text-white">
                 <div class="d-flex align-items-center">
-                    <img src="{{ equipo.team_img }}" 
-                        alt="{{ equipo.team_name }}" 
-                        class="img-thumbnail me-3"
-                        style="width: 60px; height: 60px;">
+                    <img src="{{ equipo.team_img }}" alt="{{ equipo.team_name }}" class="img-thumbnail me-3" style="width:60px; height:60px;">
                     <div>
                         <h4 class="mb-0">{{ equipo.team_name }}</h4>
-                        <h5 class="mb-0">Línea de Kills: {{ equipo.linea }}</h5>
+                        {% if equipo.tipo_apuesta.startswith('Gana') %}
+                            <h5 class="mb-0">Línea de Kills: +{{ equipo.linea }}</h5>
+                        {% else %}
+                            <h5 class="mb-0">Línea de Kills: –{{ equipo.linea }}</h5>
+                        {% endif %}
                     </div>
                 </div>
             </div>
-            
             <div class="card-body">
                 <!-- Estadísticas principales -->
                 <div class="row mb-4">
                     <div class="col-md-6">
                         <div class="alert alert-info">
-                            <h5>💥 Over {{ equipo.linea }} Kills</h5>
+                            <h5>💥 {{ equipo.tipo_apuesta }}</h5>
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6>Probabilidad de superar: {{ equipo.prob_over }}%</h6>
-                                    <h6>Partidas históricas over: {{ equipo.prob_superar_total }}%</h6>
+                                    <h6>Probabilidad Over: {{ equipo.prob_over }}%</h6>
                                 </div>
                                 <div>
-                                    <h4 class="text-primary">
-                                        {{ equipo.prob_over }}%
-                                    </h4>
+                                    <h4 class="text-primary">{{ equipo.prob_over }}%</h4>
                                     <h5>{{ '✅ PROBABLE' if equipo.prob_over > 50 else '❌ IMPROBABLE' }}</h5>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
                     <div class="col-md-6">
                         <div class="alert alert-warning">
-                            <h5>🛡️ Under {{ equipo.linea }} Kills</h5>
+                            <h5>🛡️ Under</h5>
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6>Probabilidad de no superar: {{ equipo.prob_under }}%</h6>
-                                    <h6>Partidas históricas under: {{ 100 - equipo.prob_superar_total }}%</h6>
+                                    <h6>Probabilidad Under: {{ equipo.prob_under }}%</h6>
                                 </div>
                                 <div>
-                                    <h4 class="text-warning">
-                                        {{ equipo.prob_under }}%
-                                    </h4>
+                                    <h4 class="text-warning">{{ equipo.prob_under }}%</h4>
                                     <h5>{{ '✅ PROBABLE' if equipo.prob_under > 50 else '❌ IMPROBABLE' }}</h5>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Estadísticas detalladas -->
-                <div class="row">
+                <div class="row mb-4">
                     <div class="col-md-4">
-                        <div class="card bg-success text-white">
-                            <div class="card-body text-center">
+                        <div class="card bg-success text-white text-center">
+                            <div class="card-body">
                                 <h5>🏆 En Victorias</h5>
                                 <p>{{ equipo.supero_victorias }}/{{ equipo.total_victorias }}</p>
                                 <h2>{{ equipo.prob_superar_victorias }}%</h2>
-                                <small>Supera {{ equipo.linea }} kills cuando gana</small>
                             </div>
                         </div>
                     </div>
-                    
                     <div class="col-md-4">
-                        <div class="card bg-danger text-white">
-                            <div class="card-body text-center">
+                        <div class="card bg3-danger text-white text-center">
+                            <div class="card-body">
                                 <h5>💀 En Derrotas</h5>
                                 <p>{{ equipo.supero_derrotas }}/{{ equipo.total_derrotas }}</p>
                                 <h2>{{ equipo.prob_superar_derrotas }}%</h2>
-                                <small>Supera {{ equipo.linea }} kills cuando pierde</small>
                             </div>
                         </div>
                     </div>
-                    
                     <div class="col-md-4">
-                        <div class="card bg-primary text-white">
-                            <div class="card-body text-center">
+                        <div class="card bg-primary text-white text-center">
+                            <div class="card-body">
                                 <h5>📊 Total General</h5>
                                 <p>{{ equipo.supero_victorias + equipo.supero_derrotas }}/{{ equipo.total_partidas }}</p>
                                 <h2>{{ equipo.prob_superar_total }}%</h2>
-                                <small>Promedio histórico general</small>
                             </div>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Historial de partidas -->
-                <div class="mt-4">
+                <div>
                     <h5 class="mb-3">📈 Historial Completo de Kills</h5>
                     <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="thead-dark">
+                        <table class="table table-hover table-dark">
+                            <thead>
                                 <tr>
                                     <th>Fecha</th>
                                     <th>Game #</th>
                                     <th>Rival</th>
-                                    <th>Kills Equipo</th>
-                                    <th>Kills Rival</th>
+                                    <th>Kills Eq.</th>
+                                    <th>Kills Riv.</th>
                                     <th>Diferencia</th>
-                                    <th>Resultado Kills</th>
-                                    <th>Línea</th>
+                                    <th>Res. Kills</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for partida in equipo.partidas %}
-                                <tr class="{% if partida.ganado_kills %}table-success{% else %}table-danger{% endif %}">
-                                    <td>{{ partida.fecha.strftime('%d/%m/%Y') if partida.fecha else 'N/A' }}</td>
-                                    <td>{{ partida.game_num }}</td>
+                                {% for p in equipo.partidas %}
+                                <tr class="{% if p.ganado_kills %}table-success{% else %}table-danger{% endif %}">
+                                    <td>{{ p.fecha.strftime('%d/%m/%Y') if p.fecha else 'N/A' }}</td>
+                                    <td>{{ p.game_num }}</td>
+                                    <td><strong>{{ p.rival_nombre }}</strong><br><small>{{ p.rival_code }}</small></td>
+                                    <td>{{ p.kills_equipo }}</td>
+                                    <td>{{ p.kills_rival }}</td>
                                     <td>
-                                        <strong>{{ partida.rival_nombre }}</strong>
-                                        <small class="d-block text-muted">{{ partida.rival_code }}</small>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-primary fs-6">{{ partida.kills_equipo }}</span>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-secondary fs-6">{{ partida.kills_rival }}</span>
-                                    </td>
-                                    <td>
-                                        <span class="badge {% if partida.diferencia_kills > 0 %}bg-success{% else %}bg-danger{% endif %} fs-6">
-                                            {{ '+' if partida.diferencia_kills > 0 else '' }}{{ partida.diferencia_kills }}
+                                        <span class="badge {% if p.diferencia_kills>0 %}bg-success{% else %}bg-danger{% endif %}">
+                                            {{ '+' if p.diferencia_kills>0 else '' }}{{ p.diferencia_kills }}
                                         </span>
                                     </td>
                                     <td>
-                                        {% if partida.ganado_kills %}
-                                            <span class="badge bg-success">✅ GANÓ</span>
+                                        {% if p.ganado_kills %}
+                                            <span class="badge bg-success">✅</span>
                                         {% else %}
-                                            <span class="badge bg-danger">❌ PERDIÓ</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if partida.kills_equipo >= equipo.linea %}
-                                            <span class="badge bg-info">OVER 🠉</span>
-                                        {% else %}
-                                            <span class="badge bg-warning">UNDER 🡻</span>
+                                            <span class="badge bg3-danger">❌</span>
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -219,39 +194,8 @@
             </div>
         </div>
         {% endfor %}
-        
-        <!-- Resumen final -->
-        <div class="card bg-dark text-white mt-4">
-            <div class="card-body">
-                <h4 class="text-center">📋 Resumen del Análisis</h4>
-                <div class="row text-center mt-3">
-                    <div class="col-md-6">
-                        <h5>{{ team1_name }}</h5>
-                        <p>Línea: {{ linea_team1 }} kills</p>
-                        {% if equipos_stats|length > 0 %}
-                        <h6>Probabilidad histórica: {{ equipos_stats[0].prob_superar_total if equipos_stats[0].team_id == team1_id else equipos_stats[1].prob_superar_total if equipos_stats|length > 1 else 'N/A' }}%</h6>
-                        {% endif %}
-                    </div>
-                    <div class="col-md-6">
-                        <h5>{{ team2_name }}</h5>
-                        <p>Línea: {{ linea_team2 }} kills</p>
-                        {% if equipos_stats|length > 1 %}
-                        <h6>Probabilidad histórica: {{ equipos_stats[1].prob_superar_total if equipos_stats[1].team_id == team2_id else equipos_stats[0].prob_superar_total if equipos_stats|length > 0 else 'N/A' }}%</h6>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Inicializar tooltips si es necesario
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
-        })
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js3/bootstrap.bundle.min.js"></script>
 </body>
 </html>

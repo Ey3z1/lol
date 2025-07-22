@@ -32,6 +32,23 @@
             </div>
         </div>
     </nav>
+    <div class="container py-2">
+        <div class="row mb-4">
+            <div class="col-md-8 offset-md-2">
+                <div class="card bg-secondary text-light">
+                    <div class="card-header">
+                        <h5 class="mb-0">📋 Cargar Búsqueda Anterior</h5>
+                    </div>
+                    <div class="card-body">
+                        <select class="form-select bg-dark text-light" id="previous-searches">
+                            <option value="">-- Selecciona una búsqueda anterior --</option>
+                        </select>
+                        <small class="text-muted">Selecciona una configuración previa para cargar automáticamente todos los datos.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="container py-4">
         <h2 class="text-center mb-4">⚔️ Configurar Líneas</h2>
         <form method="POST">
@@ -277,7 +294,7 @@
             ['1.8', '1.9'], ['1.95', '1.75'], ['1.85', '1.850'], 
             ['2.4', '1.5'], ['1.65', '2.1'], ['2', '1.7'],
             ['1.6', '2.2'], ['1.55', '2.3'], ['1.4', '2.7'],
-            ['1.2', '4']
+            ['1.2', '4'], ['1.3', '3'], ['1.45', '2.55']
         ]);
 
         // Normalizar entrada (compatibilidad con coma y punto decimal)
@@ -403,6 +420,16 @@
             escapeMarkup: function(m) { return m; }
         });
 
+        document.querySelector('form[method="POST"]').addEventListener('submit', function(e) {
+        if (this.dataset.programmaticSubmit == "true") {
+            e.preventDefault(); // Evita recarga solo si es programático
+            // ... tu lógica AJAX o lo que necesites ...
+            // Limpia la marca para futuros submits manuales
+            delete this.dataset.programmaticSubmit;
+        }
+        // Si no hay marca, el submit sigue su curso normal (recarga la página)
+        });
+
         function formatBanOption(option) {
             if (!option.id) return option.text;
             const image = $(option.element).data('image');
@@ -411,6 +438,219 @@
             }
             return option.text;
         }
+
+        $(document).ready(function() {
+            // Cargar las búsquedas anteriores al inicializar la página
+            loadPreviousSearches();
+            
+            // Configurar Select2 para el select de búsquedas anteriores
+            $('#previous-searches').select2({
+                placeholder: "Buscar y seleccionar configuración anterior...",
+                allowClear: true,
+                theme: "bootstrap-5",
+                width: '100%'
+            });
+            
+            // Manejar la selección de una búsqueda anterior
+            $('#previous-searches').on('change', function() {
+                const searchId = $(this).val();
+                if (searchId) {
+                    loadSearchData(searchId);
+                }
+            });
+        });
+
+        function loadPreviousSearches() {
+            $.ajax({
+                url: '/get_previous_searches',
+                method: 'GET',
+                success: function(searches) {
+                    const select = $('#previous-searches');
+                    select.empty();
+                    select.append('<option value="">-- Selecciona una búsqueda anterior --</option>');
+                    
+                    searches.forEach(function(search) {
+                        const formattedDate = new Date(search.fecha).toLocaleDateString('es-ES');
+                        const displayText = `${formattedDate} - Teams: ${search.team1_id} vs ${search.team2_id}`;
+                        select.append(`<option value="${search.id}">${displayText}</option>`);
+                    });
+                    
+                    select.trigger('change');
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error cargando búsquedas anteriores:', error);
+                }
+            });
+        }
+
+        function loadSearchData(searchId) {
+            $.ajax({
+                url: `/get_search_data/${searchId}`,
+                method: 'GET',
+                success: function(data) {
+                    fillFormWithData(data);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error cargando datos de búsqueda:', error);
+                    alert('Error al cargar los datos de la búsqueda');
+                }
+            });
+        }
+
+        function calcularLineasJugadoresProgramatico() {
+            const form = document.querySelector('form[method="POST"]');
+            if (form) {
+                form.dataset.programmaticSubmit = "true";
+                form.requestSubmit();
+            }
+        }
+
+async function fillFormWithData(data) {
+    console.log('Datos recibidos:', data);
+    
+    // Equipos y cuotas
+    if (data.team1_id) $('#team1').val(data.team1_id).trigger('change');
+    if (data.team2_id) $('#team2').val(data.team2_id).trigger('change');
+    if (data.cuota1) $('#cuota1').val(data.cuota1);
+    if (data.cuota2) $('#cuota2').val(data.cuota2);
+    const waitTeam1 = new Promise(res => $('#team1').one('change', res));
+    $('#team1').val(data.team1_id).trigger('change');
+    const waitTeam2 = new Promise(res => $('#team2').one('change', res));
+    $('#team2').val(data.team2_id).trigger('change');
+    await waitTeam1;
+    await waitTeam2;
+
+
+    calcularLineasJugadoresProgramatico();
+    // supón que esta función dispara un evento cuando termina:
+    await waitForMainFormVisible();
+    console.log('#mainForm ahora es visible');
+            Object.keys(data).forEach(key => {
+                if (key.startsWith('linea_') || key.startsWith('cuotaOver_') || key.startsWith('cuotaUnder_')) {
+                    const value = data[key];
+                    if (value !== undefined && value !== '') {
+                        // Buscar por name attribute
+                        const input = $(`input[name="${key}"]`);
+                        if (input.length) {
+                            input.val(value);
+                            console.log(`✓ ${key}: ${value}`);
+                        } else {
+                            // Buscar por ID (para cuotas)
+                            const jugadorId = key.split('_')[1];
+                            let inputId = '';
+                            
+                            if (key.startsWith('linea_')) {
+                                inputId = `#linea-${jugadorId}`;
+                            } else if (key.startsWith('cuotaOver_')) {
+                                inputId = `#cuota-over${jugadorId}`;
+                            } else if (key.startsWith('cuotaUnder_')) {
+                                inputId = `#cuota-under${jugadorId}`;
+                            }
+                            
+                            const inputById = $(inputId);
+                            if (inputById.length) {
+                                inputById.val(value);
+                                console.log(`✓ ${key} (por ID): ${value}`);
+                            } else {
+                                console.warn(`✗ No encontrado: ${key}`);
+                            }
+                        }
+                    }
+                }
+            });
+              fillBansData(data);
+  showSuccessMessage('Cuotas de jugadores cargadas');
+}
+
+function waitForMainFormVisible(timeout = 5000) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    function check() {
+      const $form = $('#mainForm');
+      // Si existe y es visible
+      if ($form.length && $form.is(':visible')) return resolve();
+      if (Date.now() - start > timeout) return reject('Timeout esperando que #mainForm sea visible');
+      setTimeout(check, 100);
+    }
+    check();
+  });
+}
+
+function fillBansData(data) {
+    console.log('=== PROCESANDO BANS ===');
+    console.log('Datos recibidos:', data);
+    
+    let bansArray = [];
+    
+    // Caso 1: Los bans vienen como "bans[]": "valor_único"
+    if (data['bans[]']) {
+        // Si es un string único, convertirlo a array
+        if (typeof data['bans[]'] === 'string') {
+            bansArray = [data['bans[]']];
+        } else if (Array.isArray(data['bans[]'])) {
+            bansArray = data['bans[]'];
+        }
+        console.log('Bans desde bans[]:', bansArray);
+    }
+    
+    // Caso 2: Los bans vienen como array directo
+    else if (data.bans && Array.isArray(data.bans)) {
+        bansArray = data.bans;
+        console.log('Bans como array:', bansArray);
+    }
+    
+    // Caso 3: Los bans vienen como string JSON
+    else if (data.bans && typeof data.bans === 'string') {
+        try {
+            bansArray = JSON.parse(data.bans);
+            console.log('Bans parseados desde JSON:', bansArray);
+        } catch (e) {
+            bansArray = data.bans.split(',').map(ban => ban.trim()).filter(ban => ban !== '');
+            console.log('Bans desde string separado por comas:', bansArray);
+        }
+    }
+    
+    // Caso 4: Buscar campos individuales ban_1, ban_2, etc.
+    else {
+        Object.keys(data).forEach(key => {
+            if (key.startsWith('ban_') && data[key]) {
+                bansArray.push(data[key]);
+            }
+        });
+        console.log('Bans desde campos individuales:', bansArray);
+    }
+    
+    // Aplicar los bans al select
+    if (bansArray.length > 0) {
+        const bansStrings = bansArray.map(ban => String(ban));
+        $('#bans').val(bansStrings).trigger('change');
+        console.log('✓ Bans aplicados:', bansStrings);
+    } else {
+        $('#bans').val([]).trigger('change');
+        console.log('✓ No hay bans - select limpiado');
+    }
+    
+    console.log('=== FIN PROCESAMIENTO BANS ===');
+}
+
+
+
+
+        function showSuccessMessage(message) {
+            const alert = $(`
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `);
+            
+            $('.container').first().prepend(alert);
+            
+            setTimeout(() => {
+                alert.alert('close');
+            }, 3000);
+        }
+
 
     </script>
 </body>
