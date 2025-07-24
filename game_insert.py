@@ -211,11 +211,15 @@ def obtener_torneos_con_matches_de_bbdd():
     connection = mysql.connector.connect(**DB_CONFIG)
     cursor = connection.cursor(dictionary=True)
     cursor.execute("""
-        SELECT DISTINCT t.id, t.slug as name
+        SELECT DISTINCT t.id, t.slug AS name
         FROM TOURNAMENT t
         JOIN MATCHES m ON t.id = m.tournament_id
         WHERE t.slug LIKE %s
-        ORDER BY t.activo desc, t.id DESC
+        GROUP BY t.id, t.slug, t.activo
+        ORDER BY 
+                MAX(m.start_time) DESC,
+                t.activo DESC,
+                t.id DESC
     """, (f"%{current_year}%",))
     torneos = cursor.fetchall()
     cursor.close()

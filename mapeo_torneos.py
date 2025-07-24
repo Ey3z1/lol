@@ -22,9 +22,18 @@ MAPEO_TORNEOS = {
     '2': [
         'LPL/2025 Season/Split 3'
     ],
-    '3': [
-        "Superliga Domino's/2025 Season/Summer Split",
-        "Superliga Domino's/2025 Season/Summer Swiss",
-        "Superliga Domino's/2025 Season/Summer Playoffs"
-    ]
+    # '3': [
+    #     "Superliga Domino''s/2025 Season/Summer Split",
+    #     "Superliga Domino''s/2025 Season/Summer Swiss",
+    #     "Superliga Domino''s/2025 Season/Summer Playoffs"
+    # ],
+    '114194683845864582':[
+        'LCK CL/2025 Season/Rounds 1-2'
+    ],
+    '4':[
+        'LCK CL/2025 Season/Rounds 3-5'
+    ],
+    '113503357263583149':[
+        'LCK/2025 Season/Rounds 3-5'
+    ],
 }
