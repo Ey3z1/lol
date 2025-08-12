@@ -4,6 +4,7 @@ from game_insert import  add_team_to_team_tournament, get_or_create_player, get_
 from datetime import timedelta
 from ratelimit import limits, sleep_and_retry
 from game_select import obtener_max_index_leaguepedia
+import traceback
 
 def procesar_torneo_leaguepedia(connection, torneo_id, nombre_torneo):
     cursor = connection.cursor(dictionary=True)
@@ -123,7 +124,8 @@ def procesar_juego_leaguepedia(connection, game_details, torneo_id, gamepedia_sl
         print(f"✅ Juego {game_id} guardado (BO{game_details.gameInSeries})")
         
     except Exception as e:
-        print(f"❌ Error procesando juego: {str(e)}")
+        print(f"❌ Error procesando juego: {type(e).__name__}: {str(e)}")
+        traceback.print_exc()  # Esto imprime la traza completa del error
         connection.rollback()
     finally:
         cursor.close()

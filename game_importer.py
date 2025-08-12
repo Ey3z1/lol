@@ -59,10 +59,6 @@ def fetch_completed_events_by_tournament(tournament_id):
         if not isinstance(teams, list) or len(teams) < 2:
             print(f"⚠ Match {match.get('id')} no tiene suficientes equipos, saltando...")
             continue
-
-        print(f"\n🔹 Procesando match {match.get('id')} ...")
-        print(f"📅 Fecha y hora: {event.get('startTime')}")
-        print(f"🆚 {teams[0].get('name')} vs {teams[1].get('name')}")
         eventos_completos.append(event)
     return eventos_completos
 

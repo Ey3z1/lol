@@ -13,23 +13,7 @@
 <body class="bg-dark text-light">
 
     <!-- NAVBAR ------------------------------------------------------------->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary" data-bs-theme="dark">
-        <div class="container">
-            <a class="navbar-brand" href="/">🏆 LoL eStats</a>
-
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-
-            <div class="collapse navbar-collapse" id="mainNav">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    <li class="nav-item"><a class="nav-link" href="/seleccionar-torneos">📥 Descargas</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/torneo">📊 Torneos</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/futuras_partidas">⏳ Próximos</a></li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    {% include 'navbar.html' %}
 
     <!-- CONTENIDO PRINCIPAL ----------------------------------------------->
     <div class="container py-4">

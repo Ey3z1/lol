@@ -41,21 +41,7 @@
     </style>
 </head>
 <body class="bg-dark text-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary">
-        <div class="container">
-            <a class="navbar-brand" href="/">🏆 LoL eStats</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="mainNav">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    <li class="nav-item"><a class="nav-link" href="/seleccionar-torneos">📥 Descargas</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/torneo">📊 Torneos</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/futuras_partidas">⏳ Próximos</a></li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    {% include 'navbar.html' %}
 
     <div class="container-fluid py-4">
         <div class="text-center mb-4">
@@ -71,14 +57,14 @@
                     <th colspan="2">Dragones 4.5</th>
                     <th colspan="4">Torres</th>
                     <th colspan="2">Barones 1.5</th>
-                    <th colspan="10">Kills thresholds</th>
+                    <th colspan="10">Kills</th>
                 </tr>
                 <tr>
                     <th>Under</th><th>Over</th>
                     <th>U 11.5</th><th>O 11.5</th>
                     <th>U 12.5</th><th>O 12.5</th>
                     <th>Under</th><th>Over</th>
-                    {% for th in [26.5,27.5,28.5,29.5,30.5] %}
+                    {% for th in [26.5,27.5,28.5,29.5,30.5,31.5,32.5] %}
                         <th>U {{ th }}</th>
                         <th>O {{ th }}</th>
                     {% endfor %}
@@ -115,7 +101,7 @@
                     <td class="stats-under">{{ row.barons_under_eq_1_5 }}</td>
                     <td class="stats-over">{{ row.barons_over_1_5 }}</td>
                     <!-- Kills -->
-                    {% for th in [26.5,27.5,28.5,29.5,30.5] %}
+                    {% for th in [26.5,27.5,28.5,29.5,30.5,31.5,32.5] %}
                         {% set over = row['kills_over_' ~ th|string|replace('.', '_')] %}
                         {% set under = row['kills_under_eq_' ~ th|string|replace('.', '_')] %}
                         <td class="stats-under">{{ under }}</td>
@@ -146,7 +132,7 @@
                         Under: {{ "%.1f"|format((row.barons_under_eq_1_5 or 0)/total*100 if total else 0) }}% &nbsp;
                         Over: {{ "%.1f"|format((row.barons_over_1_5 or 0)/total*100 if total else 0) }}%
                     </td>
-                    {% for th in [26.5,27.5,28.5,29.5,30.5] %}
+                    {% for th in [26.5,27.5,28.5,29.5,30.5,31.5,32.5] %}
                         {% set over = row['kills_over_' ~ th|string|replace('.', '_')] %}
                         {% set under = row['kills_under_eq_' ~ th|string|replace('.', '_')] %}
                         {% set total = (over or 0)+(under or 0) %}
@@ -169,7 +155,7 @@
                     <td>{{ stats.games_over_12_5_torres }}</td>
                     <td>{{ stats.games_under_eq_1_5_barones }}</td>
                     <td>{{ stats.games_over_1_5_barones }}</td>
-                    {% for th in [26.5,27.5,28.5,29.5,30.5] %}
+                    {% for th in [26.5,27.5,28.5,29.5,30.5,31.5,32.5] %}
                         {% set over = stats['games_over_' ~ th|string|replace('.', '_') ~ '_kills'] %}
                         {% set under = (tgames or 0) - (over or 0) %}
                         <td>{{ under }}</td>
@@ -194,7 +180,7 @@
                         Under: {{ "%.1f"|format((stats.games_under_eq_1_5_barones or 0)/(tgames or 1)*100) }}% &nbsp;
                         Over: {{ "%.1f"|format((stats.games_over_1_5_barones or 0)/(tgames or 1)*100) }}%
                     </td>
-                    {% for th in [26.5,27.5,28.5,29.5,30.5] %}
+                    {% for th in [26.5,27.5,28.5,29.5,30.5,31.5,32.5] %}
                         {% set over = stats['games_over_' ~ th|string|replace('.', '_') ~ '_kills'] %}
                         {% set under = (tgames or 0) - (over or 0) %}
                         {% set total = (over or 0)+(under or 0) %}

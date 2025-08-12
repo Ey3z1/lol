@@ -20,6 +20,21 @@ def obtener_torneo_por_id(torneo_id):
     connection.close()
     return torneo
 
+def obtener_torneos_activos():
+    connection = mysql.connector.connect(**DB_CONFIG)
+    cursor = connection.cursor()
+    cursor.execute("""
+        SELECT id
+        FROM TOURNAMENT
+        WHERE activo = 1
+    """)
+    torneos_activos = [str(row[0]) for row in cursor.fetchall()]  # Convertir a string aquí
+    cursor.close()
+    connection.close()
+    return torneos_activos
+
+
+
 def obtener_clasificacion_torneo(torneo_id):
     connection = mysql.connector.connect(**DB_CONFIG)
     cursor = connection.cursor(dictionary=True)
@@ -134,6 +149,9 @@ def obtener_stats_torneo(torneo_id):
           SUM(CASE WHEN kills > 28.5 THEN 1 ELSE 0 END)          AS games_over_28_5_kills,
           SUM(CASE WHEN kills > 29.5 THEN 1 ELSE 0 END)          AS games_over_29_5_kills,
           SUM(CASE WHEN kills > 30.5 THEN 1 ELSE 0 END)          AS games_over_30_5_kills,
+          SUM(CASE WHEN kills > 31.5 THEN 1 ELSE 0 END)          AS games_over_31_5_kills,
+          SUM(CASE WHEN kills > 32.5 THEN 1 ELSE 0 END)          AS games_over_32_5_kills,
+
 
           -- Over/Under barones
           SUM(CASE WHEN barons > 1.5 THEN 1 ELSE 0 END)          AS games_over_1_5_barones,
@@ -196,7 +214,11 @@ SELECT
     COUNT(CASE WHEN kills_totales > 29.5  THEN 1 END) AS kills_over_29_5,
     COUNT(CASE WHEN kills_totales <= 29.5 THEN 1 END) AS kills_under_eq_29_5,
     COUNT(CASE WHEN kills_totales > 30.5  THEN 1 END) AS kills_over_30_5,
-    COUNT(CASE WHEN kills_totales <= 30.5 THEN 1 END) AS kills_under_eq_30_5
+    COUNT(CASE WHEN kills_totales <= 30.5 THEN 1 END) AS kills_under_eq_30_5,
+    COUNT(CASE WHEN kills_totales > 31.5  THEN 1 END) AS kills_over_31_5,
+    COUNT(CASE WHEN kills_totales <= 31.5 THEN 1 END) AS kills_under_eq_31_5,     
+    COUNT(CASE WHEN kills_totales > 32.5  THEN 1 END) AS kills_over_32_5,
+    COUNT(CASE WHEN kills_totales <= 32.5 THEN 1 END) AS kills_under_eq_32_5            
 FROM participaciones
 GROUP BY team_id, team_name, tier
 ORDER BY team_name;
@@ -401,7 +423,7 @@ def obtener_jugadores_por_equipos(team1_id, team2_id):
             FROM PARTICIPANT p
             JOIN SPORTS_PLAYER sp ON p.player_id = sp.id
             JOIN TEAM t ON p.team_id = t.id
-            WHERE p.team_id IN (%s, %s)
+            WHERE p.team_id IN (%s, %s) and activo=1
             GROUP BY p.player_id, sp.name, sp.role, t.name, t.image
             ORDER BY 
                 FIELD(p.team_id, %s, %s),

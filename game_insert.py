@@ -7,6 +7,8 @@ from config_local import DB_CONFIG
 
 
 def get_or_create_player(cursor, player_name, participant_id, team_id):
+    # if player_name == None:
+    #     player_name = 'Ice'
     cursor.execute("SELECT id FROM SPORTS_PLAYER WHERE name like %s  and team_id = %s ", ('%' + player_name, team_id,))
     player = cursor.fetchone()
     

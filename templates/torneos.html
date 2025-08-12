@@ -9,31 +9,25 @@
 </head>
 <body class="bg-dark text-light">
 
-    <!-- Navbar conservando tu estilo original -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary" data-bs-theme="dark">
-        <div class="container">
-            <a class="navbar-brand" href="/">🏆 LoL eStats</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="mainNav">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/seleccionar-torneos"><i class="fa-solid fa-download me-1"></i>Descargas</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/torneo"><i class="fa-solid fa-chart-column me-1"></i>Torneos</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/futuras_partidas"><i class="fa-solid fa-hourglass-half me-1"></i>Próximos</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    {% include 'navbar.html' %}
 
     <div class="container py-4">
-        <h1 class="mb-4">Torneos disponibles</h1>
+        {% if mensaje %}
+        <div class="alert alert-info alert-dismissible fade show mt-3" role="alert">
+            {{ mensaje }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="mb-0">Torneos disponibles</h1>
+            <form method="post" action="{{ url_for('descargar_torneos_activos') }}">
+                <button type="submit" class="btn btn-success">
+                    <i class="fa-solid fa-download me-1"></i>
+                    Descargar torneos activos
+                </button>
+            </form>
+        </div>
+
         <ul class="list-group list-group-flush">
             {% for torneo in torneos %}
             <li class="list-group-item bg-dark d-flex justify-content-between align-items-center border-secondary mb-3 rounded" style="box-shadow:0 1px 4px rgba(30,40,80,0.09);">

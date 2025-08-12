@@ -36,4 +36,13 @@ MAPEO_TORNEOS = {
     '113503357263583149':[
         'LCK/2025 Season/Rounds 3-5'
     ],
+    '113487526512660769':[
+        'LEC/2025 Season/Summer Season'
+    ],
+    '113503113902025188':[
+        'LCP/2025 Season/Season Finals'
+    ],
+    '113487190604684835':[
+        'LTA North/2025 Season/Split 3'
+    ],
 }

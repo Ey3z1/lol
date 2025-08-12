@@ -6,7 +6,7 @@ import time
 import requests
 from game_importer import importar_diferencial, obtener_torneos_de_bbdd, obtener_torneos_con_matches_de_bbdd  # Importación clave
 from game_insert import cambiar_tier, insert_busquedas_ev
-from game_select import get_searches_by_id, get_ultimas_busquedas, obtener_clasificacion_torneo, obtener_games_por_match,obtener_matches_por_torneo, obtener_partidas_kills_equipo, obtener_stats_equipos, obtener_stats_torneo,obtener_torneo_por_id, obtener_campeon_por_id,obtener_equipos_con_imagen,obtener_champions_con_imagen, obtener_jugadores_por_equipos, obtener_jugador_por_id, obtener_partidas_jugador  # Importación clave
+from game_select import get_searches_by_id, get_ultimas_busquedas, obtener_clasificacion_torneo, obtener_games_por_match,obtener_matches_por_torneo, obtener_partidas_kills_equipo, obtener_stats_equipos, obtener_stats_torneo,obtener_torneo_por_id, obtener_campeon_por_id,obtener_equipos_con_imagen,obtener_champions_con_imagen, obtener_jugadores_por_equipos, obtener_jugador_por_id, obtener_partidas_jugador, obtener_torneos_activos  # Importación clave
 import math
 from datetime import datetime
 import ast
@@ -60,6 +60,28 @@ def seleccionar_torneos():
     
     return render_template('seleccion_torneos.html', 
                          torneos=obtener_torneos_de_bbdd())
+
+@app.route('/descargar-torneos-activos', methods=['POST'])
+def descargar_torneos_activos():
+    try:
+        torneos_activos = obtener_torneos_activos()
+
+        if not torneos_activos:
+            mensaje = "⚠️ No hay torneos activos para descargar."
+        else:
+            # Conexión para importar_diferencial (según tu lógica puede ser necesaria)
+            connection = mysql.connector.connect(**DB_CONFIG)
+            importar_diferencial(connection, torneos_activos, True)
+            connection.close()
+            mensaje = "✅ Descarga completada para torneos activos."
+    except Exception as e:
+        mensaje = f"❌ Error: {str(e)}"
+        print(mensaje)
+
+    torneos = obtener_torneos_con_matches_de_bbdd()
+    return render_template('torneos.html', torneos=torneos, mensaje=mensaje)
+
+
 
 @app.route('/torneo')
 def ver_torneos():
@@ -321,9 +343,30 @@ def ev_calculo():
         team2_img=team2_img,
         team1_id = team1_id,
         team2_id = team2_id,
-        prob_favorito=round(prob_team1*100, 2),
+        prob_team1=round(prob_team1*100, 2),
         prob_team2=round(prob_team2*100, 2)
     )
+
+@app.route('/calculadora_ev', methods=['GET'])
+def calculadora_ev():
+    # Si no hay parámetros, muestro la página con el formulario.
+    cuota = request.args.get('cuota')
+    prob = request.args.get('prob')
+
+    if cuota is None or prob is None:
+        # Entrego la página HTML con el formulario para ingresar datos.
+        return render_template('calculadora_ev.html')
+
+    # Si llegaron parámetros, intento hacer el cálculo EV
+    try:
+        cuota = float(cuota)
+        prob = float(prob)
+    except ValueError:
+        return jsonify({'error': 'Parámetros inválidos, usa número para cuota y probabilidad.'}), 400
+
+    # cálculo EV = (H - 1)*I - (1 - I)
+    ev = (cuota - 1) * prob - (1 - prob)
+    return jsonify({'ev': ev})
 
 @app.route('/get_previous_searches', methods=['GET'])
 def get_previous_searches():

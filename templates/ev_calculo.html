@@ -10,29 +10,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary" data-bs-theme="dark">
-        <div class="container">
-            <a class="navbar-brand" href="/">🏆 LoL eStats</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            
-            <div class="collapse navbar-collapse" id="mainNav">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/seleccionar-torneos">📥 Descargas</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/torneo">📊 Torneos</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/futuras_partidas">⏳ Próximos</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    {% include 'navbar.html' %}
     <div >
         <h2 class="text-center mb-4">📊 {{team1_name}} VS {{team2_name}} 📊</h2>
         <!-- Sección de equipos -->
@@ -90,9 +68,54 @@
             </div>
         </div>
         {% endif %}
+        <div class="container-fluid my-4 px-0">
+            <h3 class="text-center mb-4">Resumen de Jugadores y EV</h3>
+            <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-3 justify-content-center">
+                {% for jugador in jugadores %}
+                {% set anchor_id = 'jugador-' ~ (jugador.id if jugador.id else jugador.nickname|replace(' ', '_')) %}
+                <div class="col">
+                <div class="card bg-dark text-white border-light shadow-sm h-100">
+                    <div class="card-body text-center">
+                    <h5 class="card-title mb-1">{{ jugador.nickname }}</h5>
+                    <span class="badge rounded-pill bg-secondary mb-2">Línea: {{ jugador.linea }}</span>
+
+                    <!-- Over -->
+                    <div class="mb-2">
+                        <span class="fw-semibold">Over:</span>
+                        <span class="badge px-3 py-2
+                        {{ 'bg-success' if jugador.ev_over > 0.05 else 'bg-danger' }}
+                        ">
+                        {{ jugador.ev_over }}
+                        </span>
+                        <span class="ms-1 badge bg-light text-dark">
+                        Cuota: {{ jugador.cuota_over }}
+                        </span>
+                    </div>
+
+                    <!-- Under -->
+                    <div class="mb-3">
+                        <span class="fw-semibold">Under:</span>
+                        <span class="badge px-3 py-2
+                        {{ 'bg-success' if jugador.ev_under > 0.05 else 'bg-danger' }}
+                        ">
+                        {{ jugador.ev_under }}
+                        </span>
+                        <span class="ms-1 badge bg-light text-dark">
+                        Cuota: {{ jugador.cuota_under }}
+                        </span>
+                    </div>
+
+                    <a href="#{{ anchor_id }}" class="btn btn-outline-light btn-sm">Ver Detalle</a>
+                    </div>
+                </div>
+                </div>
+                {% endfor %}
+            </div>
+            </div>
 
         {% for jugador in jugadores %}
-        <div class="card mb-4 shadow">
+            {% set anchor_id = 'jugador-' ~ (jugador.id if jugador.id else jugador.nickname|replace(' ', '_')) %}
+            <div class="card mb-4 shadow" id="{{ anchor_id }}" style="scroll-margin-top: 90px;">
             <div class="card-header bg-secondary text-white">
                 <h4>{{ jugador.nickname }}</h4>
                 <h5>Línea: {{ jugador.linea }} | Cuota over: {{ jugador.cuota_over }} | Cuota under: {{ jugador.cuota_under }}</h5>
