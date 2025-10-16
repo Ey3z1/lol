@@ -438,28 +438,63 @@
             });
         });
 
-        function loadPreviousSearches() {
-            $.ajax({
-                url: '/get_previous_searches',
-                method: 'GET',
-                success: function(searches) {
-                    const select = $('#previous-searches');
-                    select.empty();
-                    select.append('<option value="">-- Selecciona una búsqueda anterior --</option>');
-                    
-                    searches.forEach(function(search) {
-                        const formattedDate = new Date(search.fecha).toLocaleDateString('es-ES');
-                        const displayText = `${formattedDate} - Teams: ${search.team1_id} vs ${search.team2_id}`;
-                        select.append(`<option value="${search.id}">${displayText}</option>`);
-                    });
-                    
-                    select.trigger('change');
-                },
-                error: function(xhr, status, error) {
-                    console.error('Error cargando búsquedas anteriores:', error);
-                }
-            });
+        function formatTeamOption(option) {
+            if (!option.id) {
+                // opción de placeholder o sin id, solo texto
+                return option.text;
+            }
+            // obtener las imágenes de los dos equipos desde los atributos data
+            const image1 = $(option.element).data('image');
+            const image2 = $(option.element).data('image2');
+
+            if (!image1 || !image2) {
+                return option.text;
+            }
+
+            const $option = $(`
+                <span>
+                    <img src="${image1}" style="width: 20px; height: 20px; margin-right: 6px; border-radius: 3px;" />
+                    <img src="${image2}" style="width: 20px; height: 20px; margin-right: 8px; border-radius: 3px;" />
+                    ${option.text}
+                </span>
+            `);
+            return $option;
         }
+
+
+function loadPreviousSearches() {
+    $.ajax({
+        url: '/get_previous_searches',
+        method: 'GET',
+        success: function(searches) {
+            const select = $('#previous-searches');
+            select.empty();
+            select.append('<option value="">-- Selecciona una búsqueda anterior --</option>');
+
+            searches.forEach(function(search) {
+                const formattedDate = new Date(search.fecha).toLocaleDateString('es-ES');
+                const displayText = `${formattedDate} - ${search.team1_name} vs ${search.team2_name}`;
+                select.append(
+                    `<option value="${search.id}" data-image="${search.team1_image}" data-image2="${search.team2_image}">${displayText}</option>`
+                );
+            });
+
+            // Inicializar Select2 con plantilla personalizada
+            select.select2({
+                templateResult: formatTeamOption,
+                templateSelection: formatTeamOption,
+                escapeMarkup: function(m) { return m; } // para permitir HTML
+            });
+
+            select.trigger('change');
+        },
+        error: function(xhr, status, error) {
+            console.error('Error cargando búsquedas anteriores:', error);
+        }
+    });
+}
+
+
 
         function loadSearchData(searchId) {
             $.ajax({
@@ -486,58 +521,121 @@
 async function fillFormWithData(data) {
     console.log('Datos recibidos:', data);
     
-    // Equipos y cuotas
-    if (data.team1_id) $('#team1').val(data.team1_id).trigger('change');
-    if (data.team2_id) $('#team2').val(data.team2_id).trigger('change');
-    if (data.cuota1) $('#cuota1').val(data.cuota1);
-    if (data.cuota2) $('#cuota2').val(data.cuota2);
-    const waitTeam1 = new Promise(res => $('#team1').one('change', res));
-    $('#team1').val(data.team1_id).trigger('change');
-    const waitTeam2 = new Promise(res => $('#team2').one('change', res));
-    $('#team2').val(data.team2_id).trigger('change');
-    await waitTeam1;
-    await waitTeam2;
-
-
-    calcularLineasJugadoresProgramatico();
-    // supón que esta función dispara un evento cuando termina:
-    await waitForMainFormVisible();
-    console.log('#mainForm ahora es visible');
-            Object.keys(data).forEach(key => {
-                if (key.startsWith('linea_') || key.startsWith('cuotaOver_') || key.startsWith('cuotaUnder_')) {
-                    const value = data[key];
-                    if (value !== undefined && value !== '') {
-                        // Buscar por name attribute
-                        const input = $(`input[name="${key}"]`);
-                        if (input.length) {
-                            input.val(value);
-                            console.log(`✓ ${key}: ${value}`);
-                        } else {
-                            // Buscar por ID (para cuotas)
-                            const jugadorId = key.split('_')[1];
-                            let inputId = '';
-                            
-                            if (key.startsWith('linea_')) {
-                                inputId = `#linea-${jugadorId}`;
-                            } else if (key.startsWith('cuotaOver_')) {
-                                inputId = `#cuota-over${jugadorId}`;
-                            } else if (key.startsWith('cuotaUnder_')) {
-                                inputId = `#cuota-under${jugadorId}`;
-                            }
-                            
-                            const inputById = $(inputId);
-                            if (inputById.length) {
-                                inputById.val(value);
-                                console.log(`✓ ${key} (por ID): ${value}`);
+    try {
+        // 1. Cargar equipos y cuotas
+        if (data.team1_id) $('#team1').val(data.team1_id).trigger('change');
+        if (data.team2_id) $('#team2').val(data.team2_id).trigger('change');
+        if (data.cuota1) $('#cuota1').val(data.cuota1);
+        if (data.cuota2) $('#cuota2').val(data.cuota2);
+        
+        // 2. Esperar a que los selects se actualicen
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // 3. Simular clic en "Calcular Líneas Jugadores" automáticamente
+        const calcularBtn = document.querySelector('button[type="submit"]:not([formaction])');
+        if (calcularBtn) {
+            const form = calcularBtn.closest('form');
+            if (form) {
+                // Enviar datos via AJAX para obtener jugadores
+                $.ajax({
+                    url: form.action || window.location.pathname,
+                    method: 'POST',
+                    data: $(form).serialize(),
+                    success: async function(response) {
+                        // Reemplazar el contenido con la respuesta que incluye jugadores
+                        const newContent = $(response);
+                        const jugadoresContainer = newContent.find('#mainForm, .row:has(.player-card)').first();
+                        
+                        if (jugadoresContainer.length) {
+                            // Insertar los jugadores en la página actual
+                            if ($('#mainForm').length) {
+                                $('#mainForm').replaceWith(jugadoresContainer);
                             } else {
-                                console.warn(`✗ No encontrado: ${key}`);
+                                $('form[method="POST"]').after(jugadoresContainer);
                             }
+                            
+                            // Esperar a que se rendericen los elementos
+                            await new Promise(resolve => setTimeout(resolve, 200));
+                            
+                            // 4. Cargar las cuotas y líneas de jugadores
+                            await loadPlayerData(data);
+                            
+                            showSuccessMessage('Configuración cargada correctamente');
                         }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error al cargar jugadores:', error);
+                        alert('Error al cargar los datos de jugadores');
+                    }
+                });
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error en fillFormWithData:', error);
+    }
+}
+
+// Nueva función para cargar específicamente los datos de jugadores
+async function loadPlayerData(data) {
+    console.log('Cargando datos de jugadores...');
+    
+    // Cargar líneas y cuotas de jugadores
+    Object.keys(data).forEach(key => {
+        if (key.startsWith('linea_') || key.startsWith('cuotaOver_') || key.startsWith('cuotaUnder_')) {
+            const value = data[key];
+            if (value !== undefined && value !== '') {
+                // Buscar por name attribute
+                const input = $(`input[name="${key}"]`);
+                if (input.length) {
+                    input.val(value);
+                    console.log(`✓ ${key}: ${value}`);
+                } else {
+                    // Buscar por ID (para cuotas)
+                    const jugadorId = key.split('_')[1];
+                    let inputId = '';
+                    
+                    if (key.startsWith('linea_')) {
+                        inputId = `#linea-${jugadorId}`;
+                    } else if (key.startsWith('cuotaOver_')) {
+                        inputId = `#cuota-over${jugadorId}`;
+                    } else if (key.startsWith('cuotaUnder_')) {
+                        inputId = `#cuota-under${jugadorId}`;
+                    }
+                    
+                    const inputById = $(inputId);
+                    if (inputById.length) {
+                        inputById.val(value);
+                        console.log(`✓ ${key} (por ID): ${value}`);
                     }
                 }
-            });
-              fillBansData(data);
-  showSuccessMessage('Cuotas de jugadores cargadas');
+            }
+        }
+    });
+    
+    if ($('.select2-bans').length) {
+        // Destruir Select2 existente si existe
+        if ($('.select2-bans').hasClass('select2-hidden-accessible')) {
+            $('.select2-bans').select2('destroy');
+        }
+        
+        // Reinicializar Select2 con configuración completa
+        $('.select2-bans').select2({
+            placeholder: "Introduce los bans...",
+            allowClear: true,
+            multiple: true,
+            templateResult: formatBanOption,
+            templateSelection: formatBanOption,
+            escapeMarkup: function(m) { return m; }
+        });
+        
+        console.log('✅ Select2 bans reinicializado');
+    }
+    
+    // Cargar bans DESPUÉS de reinicializar Select2
+    fillBansData(data);
+        
+    console.log('Datos de jugadores cargados');
 }
 
 function waitForMainFormVisible(timeout = 5000) {

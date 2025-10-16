@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
+    {% set suma_top_kills = jugadores | map(attribute='prob_top_kills_total') | sum %}
     {% include 'navbar.html' %}
     <div >
         <h2 class="text-center mb-4">📊 {{team1_name}} VS {{team2_name}} 📊</h2>
@@ -72,12 +73,19 @@
             <h3 class="text-center mb-4">Resumen de Jugadores y EV</h3>
             <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-3 justify-content-center">
                 {% for jugador in jugadores %}
+                 {% if suma_top_kills > 0 %}
+                    {% set jugador_top_kills_norm = ((jugador.prob_top_kills_total / suma_top_kills) * 100) | round(2) %}
+                {% else %}
+                    {% set jugador_top_kills_norm = jugador.prob_top_kills_total %}
+                {% endif %}
                 {% set anchor_id = 'jugador-' ~ (jugador.id if jugador.id else jugador.nickname|replace(' ', '_')) %}
                 <div class="col">
                 <div class="card bg-dark text-white border-light shadow-sm h-100">
                     <div class="card-body text-center">
                     <h5 class="card-title mb-1">{{ jugador.nickname }}</h5>
                     <span class="badge rounded-pill bg-secondary mb-2">Línea: {{ jugador.linea }}</span>
+                    <span class="badge rounded-pill bg-primary mb-2">Top Kills Total: {{ jugador_top_kills_norm }}%</span>
+
 
                     <!-- Over -->
                     <div class="mb-2">
@@ -166,6 +174,7 @@
                             <div class="card bg-success text-white">
                                 <div class="card-body">
                                     <h5>En Victorias</h5>
+                                    <p>Partidas Top Kills: {{ jugador.top_kills_victorias }}</p>
                                     <p>{{ jugador.supero_victorias }}/{{ jugador.total_victorias }}</p>
                                     <h2>{{ jugador.prob_superar_victorias }}%</h2>
                                 </div>
@@ -176,6 +185,7 @@
                             <div class="card bg-danger text-white">
                                 <div class="card-body">
                                     <h5>En Derrotas</h5>
+                                    <p>Partidas Top Kills: {{ jugador.top_kills_derrotas }}</p>
                                     <p>{{ jugador.supero_derrotas }}/{{ jugador.total_derrotas }}</p>
                                     <h2>{{ jugador.prob_superar_derrotas }}%</h2>
                                 </div>
@@ -186,6 +196,8 @@
                             <div class="card bg-primary text-white">
                                 <div class="card-body">
                                     <h5>Total General</h5>
+                                    <p>Partidas Top Kills: {{ jugador.top_kills_derrotas +  jugador.top_kills_victorias }}</p>
+
                                     <p>{{ jugador.supero_victorias + jugador.supero_derrotas }}/{{ jugador.total_victorias + jugador.total_derrotas }}</p>
                                     <h2>{{ jugador.prob_superar_total }}%</h2>
                                 </div>

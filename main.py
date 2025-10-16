@@ -307,6 +307,40 @@ def ev_calculo():
             prob_superar_derrotas = (supero_derrotas / len(derrotas) * 100) if len(derrotas) > 0 else 0
             total_partidas = len(partidas)
             prob_superar_total = (supero_victorias + supero_derrotas) / total_partidas * 100 if total_partidas > 0 else 0
+
+            #Top kills
+            # Convertir a float directamente para todos los valores necesarios
+            total_victorias = float(jugador['total_partidas_victorias'])
+            top_kills_unicas_victorias = float(jugador['top_kills_unico_victorias'])
+            top_kills_empate_victorias = float(jugador['top_kills_empate_victorias'])
+
+            total_derrotas = float(jugador['total_partidas_derrotas'])
+            top_kills_unicas_derrotas = float(jugador['top_kills_unico_derrotas'])
+            top_kills_empate_derrotas = float(jugador['top_kills_empate_derrotas'])
+
+            prob_win = float(prob_win)  # probabilidad victoria
+            prob_lose = float(prob_lose)  # probabilidad derrota
+
+            # Calculo porcentajes en victorias y derrotas
+            pct_top_kills_unico_victorias = top_kills_unicas_victorias / total_victorias if total_victorias > 0 else 0
+            pct_top_kills_empate_victorias = top_kills_empate_victorias / total_victorias if total_victorias > 0 else 0
+
+            pct_top_kills_unico_derrotas = top_kills_unicas_derrotas / total_derrotas if total_derrotas > 0 else 0
+            pct_top_kills_empate_derrotas = top_kills_empate_derrotas / total_derrotas if total_derrotas > 0 else 0
+
+            # Asumiendo que la fracción que recibes en empate es 0.5 (gana mitad)
+            fraccion_empate = 0.5
+
+            # Probabilidad total ajustada
+            prob_top_kills_total = (
+                (pct_top_kills_unico_victorias * prob_win) +
+                (pct_top_kills_empate_victorias * fraccion_empate * prob_win) +
+                (pct_top_kills_unico_derrotas * prob_lose) +
+                (pct_top_kills_empate_derrotas * fraccion_empate * prob_lose)
+            )
+
+            prob_no_top_kills_total = 1 - prob_top_kills_total
+
             
             # Cálculo de EVs
             ev_over = (cuota_over - 1) * prob_over_total - (1 - prob_over_total)
@@ -330,7 +364,10 @@ def ev_calculo():
                 'partidas': partidas,
                 'prob_superar_victorias': round(prob_superar_victorias, 2),
                 'prob_superar_derrotas': round(prob_superar_derrotas, 2),
-                'prob_superar_total': round(prob_superar_total, 2)
+                'prob_superar_total': round(prob_superar_total, 2),
+                'prob_top_kills_total': round(prob_top_kills_total* 100, 2),
+                'top_kills_victorias': jugador['top_kills_unico_victorias'],
+                'top_kills_derrotas': jugador['top_kills_unico_derrotas']
             })
     
     return render_template(
